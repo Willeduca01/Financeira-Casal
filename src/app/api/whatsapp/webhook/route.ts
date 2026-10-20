@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. Consulta em paralelo aos cartões existentes e usuários no Neon Postgres
-    const [creditCards, benefitCards, defaultUser] = await Promise.all([
+    const [creditCards, benefitCards, allUsers] = await Promise.all([
       prisma.creditCard.findMany({
         select: {
           id: true,
@@ -154,8 +154,32 @@ export async function POST(request: NextRequest) {
         },
         orderBy: { name: "asc" },
       }),
-      prisma.user.findFirst(),
+      prisma.user.findMany({
+        orderBy: { createdAt: "asc" },
+      }),
     ]);
+
+    // Identificação de qual pessoa do casal enviou a mensagem (Pessoa 1 ou Pessoa 2)
+    const allowedList = (allowedEnv || "")
+      .split(",")
+      .map((num) => sanitizePhoneNumber(num.trim()))
+      .filter((num) => num.length > 0);
+
+    const senderIndex = allowedList.findIndex((allowed) => {
+      if (cleanSender === allowed) return true;
+      if (cleanSender.startsWith("55") && allowed.startsWith("55")) {
+        return (
+          cleanSender.slice(2, 4) === allowed.slice(2, 4) &&
+          cleanSender.slice(-8) === allowed.slice(-8)
+        );
+      }
+      return false;
+    });
+
+    const senderUser =
+      senderIndex >= 0 && allUsers[senderIndex]
+        ? allUsers[senderIndex]
+        : allUsers[0];
 
     // 5. Interpretação com Google Gemini 2.5 Flash via AI SDK
     const parsed = await interpretFinancialMessage(userText, {
@@ -178,7 +202,8 @@ export async function POST(request: NextRequest) {
           creditCards.find((c) => c.id === parsed.matchedCardId) ||
           creditCards[0];
 
-        const targetUserId = matchedCard?.userId || defaultUser?.id || "user-lucas";
+        const targetUserId =
+          matchedCard?.userId || senderUser?.id || "user-lucas";
 
         if (parsed.installments > 1 && matchedCard) {
           // Compra Parcelada no Cartão de Crédito
@@ -240,7 +265,7 @@ export async function POST(request: NextRequest) {
           benefitCards[0];
 
         const targetUserId =
-          matchedBenefit?.userId || defaultUser?.id || "user-lucas";
+          matchedBenefit?.userId || senderUser?.id || "user-lucas";
         const paymentMethod = matchedBenefit?.type === "VA" ? "VA" : "VR";
 
         await prisma.expense.create({
@@ -267,7 +292,7 @@ export async function POST(request: NextRequest) {
         }
       } else {
         // Débito / Pix / Saldo Livre
-        const targetUserId = defaultUser?.id || "user-lucas";
+        const targetUserId = senderUser?.id || "user-lucas";
 
         await prisma.expense.create({
           data: {
@@ -283,7 +308,7 @@ export async function POST(request: NextRequest) {
         });
       }
     } else if (parsed.intent === "register_income" && parsed.amount > 0) {
-      const targetUserId = defaultUser?.id || "user-lucas";
+      const targetUserId = senderUser?.id || "user-lucas";
 
       await prisma.income.create({
         data: {
