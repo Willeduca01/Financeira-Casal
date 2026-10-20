@@ -85,6 +85,8 @@ model User {
   vrAmount         Decimal            @default(0) @db.Decimal(12, 2)
   vaAmount         Decimal            @default(0) @db.Decimal(12, 2)
   incomeProportion Decimal            @default(50.0) @db.Decimal(5, 2) // Proporção no orçamento (%)
+  pinHash          String?            // Hash seguro do PIN de 4 dígitos via bcryptjs
+  passwordHash     String?            // Hash seguro da senha via bcryptjs
   
   incomes          Income[]
   expenses         Expense[]

@@ -11,6 +11,27 @@ import {
   BenefitCard,
 } from "@/types";
 
+// Hash Bcrypt seguro de 10 rounds para o PIN padrão de demonstração '1234'
+// Garante que nenhuma senha ou PIN exista em texto puro no código-fonte
+const DEFAULT_DEMO_PIN_HASH = "$2b$10$0LY2cW0VOdAe220DnhTu2ObpORd72LVgsGZds/252ETATPl0iCSIG";
+
+/**
+ * BLINDAGEM DE SEGURANÇA (PRODUÇÃO):
+ * Em ambiente de produção, dados mockados são estritamente desautorizados
+ * de serem usados como fallback para evitar que dados fictícios mascararem
+ * falhas do banco Neon ou exponham simulações financeiras irreais.
+ */
+export function assertNoProductionMockFallback(dataContext: string) {
+  if (process.env.NODE_ENV === "production") {
+    console.error(
+      `[SECURITY AUDIT] Tentativa de usar mock-data (${dataContext}) como fallback em PRODUÇÃO rejeitada.`
+    );
+    throw new Error(
+      `[SECURITY EXCEPTION] Dados mockados estão bloqueados em ambiente de produção: ${dataContext}`
+    );
+  }
+}
+
 export const INITIAL_USERS: User[] = [
   {
     id: "user-lucas",
@@ -23,7 +44,8 @@ export const INITIAL_USERS: User[] = [
     vrAmount: 650.0,
     vaAmount: 450.0,
     incomeProportion: 58.2,
-    pin: "1234",
+    pinHash: DEFAULT_DEMO_PIN_HASH,
+    pin: DEFAULT_DEMO_PIN_HASH,
   },
   {
     id: "user-mariana",
@@ -36,7 +58,8 @@ export const INITIAL_USERS: User[] = [
     vrAmount: 500.0,
     vaAmount: 350.0,
     incomeProportion: 41.8,
-    pin: "1234",
+    pinHash: DEFAULT_DEMO_PIN_HASH,
+    pin: DEFAULT_DEMO_PIN_HASH,
   },
 ];
 

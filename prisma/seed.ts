@@ -1,9 +1,15 @@
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("Iniciando seed no banco de dados...");
+  console.log("Iniciando seed seguro no banco de dados...");
+
+  // Gerar hash seguro com bcrypt (salt rounds = 10) para o PIN padrão 1234 e senha
+  const DEFAULT_PIN = "1234";
+  const hashedPin = await bcrypt.hash(DEFAULT_PIN, 10);
+  const hashedPassword = await bcrypt.hash("Casal@2026Secure!", 10);
 
   // Limpar tabelas existentes em cascata
   await prisma.creditCardInstallment.deleteMany({});
@@ -18,7 +24,7 @@ async function main() {
   await prisma.coupleSettings.deleteMany({});
   await prisma.user.deleteMany({});
 
-  // 1. Criar Casal
+  // 1. Criar Casal com PIN e Senha Hasheados
   const lucas = await prisma.user.create({
     data: {
       name: "Lucas Silva",
@@ -30,6 +36,8 @@ async function main() {
       vrAmount: 650.0,
       vaAmount: 450.0,
       incomeProportion: 58.2,
+      pinHash: hashedPin,
+      passwordHash: hashedPassword,
     },
   });
 
@@ -44,6 +52,8 @@ async function main() {
       vrAmount: 500.0,
       vaAmount: 350.0,
       incomeProportion: 41.8,
+      pinHash: hashedPin,
+      passwordHash: hashedPassword,
     },
   });
 

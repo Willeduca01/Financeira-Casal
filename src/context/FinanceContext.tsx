@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useMemo } from "react";
+import bcrypt from "bcryptjs";
 import {
   User,
   CoupleSettings,
@@ -206,6 +207,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
     const now = new Date();
     setSelectedMonth(now.getMonth());
     setSelectedYear(now.getFullYear());
+    const isProduction = process.env.NODE_ENV === "production";
+
     try {
       const savedAuth = localStorage.getItem(STORAGE_KEY_PREFIX + "isAuthenticated");
       const savedUsers = localStorage.getItem(STORAGE_KEY_PREFIX + "users");
@@ -230,8 +233,41 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       if (savedCreditCards) setCreditCards(JSON.parse(savedCreditCards));
       if (savedInstallments) setInstallments(JSON.parse(savedInstallments));
       if (savedBenefitCards) setBenefitCards(JSON.parse(savedBenefitCards));
+
+      // Em produção, se não houver dados no LocalStorage, sincronizar da API do Neon
+      if (isProduction && !savedUsers) {
+        fetch("/api/finances")
+          .then((res) => {
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return res.json();
+          })
+          .then((data) => {
+            if (data?.users && data.users.length > 0) {
+              setUsers(data.users);
+              if (data.loans) setLoans(data.loans);
+              if (data.expenses) setExpenses(data.expenses);
+              if (data.incomes) setIncomes(data.incomes);
+              if (data.creditCards) setCreditCards(data.creditCards);
+              if (data.installments) setInstallments(data.installments);
+              if (data.benefitCards) setBenefitCards(data.benefitCards);
+            }
+          })
+          .catch((err) => {
+            console.error(
+              "[SECURITY] Falha ao sincronizar com banco em produção. Fallback para mocks BLOQUEADO por segurança:",
+              err
+            );
+          });
+      }
     } catch (e) {
-      console.warn("Erro ao ler do LocalStorage, usando mocks:", e);
+      if (isProduction) {
+        console.error(
+          "[SECURITY AUDIT] Erro de persistência em produção. Fallback para dados mockados estritamente desabilitado:",
+          e
+        );
+      } else {
+        console.warn("Erro ao ler do LocalStorage, usando mocks (modo desenvolvimento local):", e);
+      }
     }
   }, []);
 
@@ -266,7 +302,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  // Autenticação do Integrante
+  // Autenticação Segura do Integrante (Bcrypt sem texto puro)
   const login = (
     userId: string,
     pin: string,
@@ -277,15 +313,41 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       return { success: false, message: "Integrante não encontrado." };
     }
 
-    const expectedPin = user.pin || "1234";
-    if (pin.trim() !== expectedPin) {
+    const storedHash = user.pinHash || user.pin;
+    let isValid = false;
+
+    if (storedHash) {
+      // Se for um hash bcrypt válido ($2a$ ou $2b$)
+      if (storedHash.startsWith("$2a$") || storedHash.startsWith("$2b$")) {
+        try {
+          isValid = bcrypt.compareSync(pin.trim(), storedHash);
+        } catch {
+          isValid = false;
+        }
+      } else {
+        // Migração defensiva caso ainda exista texto puro em localStorage antigo
+        isValid = pin.trim() === storedHash;
+        if (isValid) {
+          const newSecureHash = bcrypt.hashSync(pin.trim(), 10);
+          setUsers((prev) =>
+            prev.map((u) =>
+              u.id === userId
+                ? { ...u, pin: newSecureHash, pinHash: newSecureHash }
+                : u
+            )
+          );
+        }
+      }
+    }
+
+    if (!isValid) {
       return { success: false, message: "PIN incorreto. Tente novamente." };
     }
 
     setCurrentUserId(userId);
     setIsAuthenticated(true);
 
-    if (remember) {
+    if (remember && isClient) {
       localStorage.setItem(STORAGE_KEY_PREFIX + "isAuthenticated", "true");
       localStorage.setItem(STORAGE_KEY_PREFIX + "currentUserId", userId);
     }
@@ -306,8 +368,22 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
     const user = users.find((u) => u.id === userId);
     if (!user) return { success: false, message: "Integrante não encontrado." };
 
-    const currentPin = user.pin || "1234";
-    if (oldPin !== currentPin) {
+    const storedHash = user.pinHash || user.pin;
+    let isOldValid = false;
+
+    if (storedHash) {
+      if (storedHash.startsWith("$2a$") || storedHash.startsWith("$2b$")) {
+        try {
+          isOldValid = bcrypt.compareSync(oldPin.trim(), storedHash);
+        } catch {
+          isOldValid = false;
+        }
+      } else {
+        isOldValid = oldPin.trim() === storedHash;
+      }
+    }
+
+    if (!isOldValid) {
       return { success: false, message: "PIN atual incorreto." };
     }
 
@@ -315,11 +391,16 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       return { success: false, message: "O novo PIN deve ter pelo menos 4 dígitos." };
     }
 
+    // Gerar hash seguro do novo PIN via bcrypt (salt 10) - Nunca armazenar texto puro
+    const newHashedPin = bcrypt.hashSync(newPin.trim(), 10);
+
     setUsers((prev) =>
-      prev.map((u) => (u.id === userId ? { ...u, pin: newPin.trim() } : u))
+      prev.map((u) =>
+        u.id === userId ? { ...u, pin: newHashedPin, pinHash: newHashedPin } : u
+      )
     );
 
-    return { success: true, message: "PIN alterado com sucesso!" };
+    return { success: true, message: "PIN alterado e protegido com hash criptográfico!" };
   };
 
   // Filtragem de movimentações do mês/ano selecionado
@@ -926,8 +1007,14 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
     };
   }, [creditCards, installments, benefitCards]);
 
-  // Resetar dados para o padrão inicial
+  // Resetar dados para o padrão inicial (Bloqueado em Produção)
   const resetAllData = () => {
+    if (process.env.NODE_ENV === "production") {
+      console.warn(
+        "[SECURITY AUDIT] Ação de reset para dados mockados fictícios está estritamente desabilitada em produção."
+      );
+      return;
+    }
     setUsers(INITIAL_USERS);
     setCurrentUserId("user-lucas");
     setIncomes(INITIAL_INCOMES);

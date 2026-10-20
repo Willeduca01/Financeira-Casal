@@ -54,6 +54,7 @@ export interface User {
   vaAmount: number;
   incomeProportion: number; // Proporção no orçamento (%)
   pin?: string;
+  pinHash?: string;
 }
 
 export interface Income {
