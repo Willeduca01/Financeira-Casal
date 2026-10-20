@@ -3,11 +3,17 @@ import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { z } from "zod";
 
 /**
- * Cliente Google Gemini configurado via Vercel AI SDK
+ * Obtém o cliente Google Generative AI configurado dinamicamente
  */
-const google = createGoogleGenerativeAI({
-  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY || "",
-});
+function getGoogleProvider() {
+  const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+  if (!apiKey) {
+    throw new Error(
+      "A chave GOOGLE_GENERATIVE_AI_API_KEY não está configurada no ambiente."
+    );
+  }
+  return createGoogleGenerativeAI({ apiKey });
+}
 
 /**
  * Schema Zod para extração de intenção financeira estruturada
@@ -101,7 +107,7 @@ export async function sendWhatsAppMessage(
   text: string
 ): Promise<{ success: boolean; data?: unknown; error?: string }> {
   const token = process.env.WHATSAPP_ACCESS_TOKEN;
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  let phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
 
   if (!token || !phoneNumberId) {
     console.warn(
@@ -111,6 +117,11 @@ export async function sendWhatsAppMessage(
       success: false,
       error: "WhatsApp Cloud API credentials not configured",
     };
+  }
+
+  // Tratamento de correção de dígito para o ID de teste da Meta caso venha com 15 dígitos em vez de 16
+  if (phoneNumberId === "141445141749473") {
+    phoneNumberId = "1414445141749473";
   }
 
   const cleanTo = to.replace(/\D/g, "");
@@ -150,6 +161,11 @@ export async function sendWhatsAppMessage(
       };
     }
 
+    console.log(
+      `[WHATSAPP_BOT_SENT] Mensagem enviada com sucesso para ${cleanTo}:`,
+      responseData?.messages?.[0]?.id || "OK"
+    );
+
     return { success: true, data: responseData };
   } catch (error) {
     console.error("[WHATSAPP_BOT_SEND_EXCEPTION]", error);
@@ -161,19 +177,14 @@ export async function sendWhatsAppMessage(
 }
 
 /**
- * Interpreta a mensagem natural do usuário utilizando o Google Gemini Flash 2.5
- * com saída estruturada via Zod no Vercel AI SDK.
+ * Interpreta a mensagem natural do usuário utilizando o Google Gemini com saída estruturada via Zod.
+ * Tenta os modelos recomendados com fallback automático resiliente.
  */
 export async function interpretFinancialMessage(
   messageText: string,
   context: BotContext
 ): Promise<WhatsAppFinancialExtraction> {
-  const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-  if (!apiKey) {
-    throw new Error(
-      "A chave GOOGLE_GENERATIVE_AI_API_KEY não está configurada no ambiente."
-    );
-  }
+  const google = getGoogleProvider();
 
   const promptSystem = `Você é o assistente inteligente de finanças do casal (Financeira-Casal).
 Seu objetivo é interpretar mensagens naturais enviadas pelos cônjuges no WhatsApp para registrar despesas, compras no cartão de crédito, gastos com benefícios (VR/VA) ou receitas.
@@ -232,12 +243,34 @@ DIRETRIZES DE EXTRAÇÃO:
    - Se 'unknown': responda educadamente dizendo como eles podem registrar (ex: "Olá! Para registrar um gasto, me diga por exemplo: '35 reais no almoço com cartão VR' ou 'Mercado 120 reais no Nubank' 💳").
 `;
 
-  const { object } = await generateObject({
-    model: google("gemini-2.5-flash"),
-    schema: WhatsAppFinancialExtractionSchema,
-    system: promptSystem,
-    prompt: `Mensagem enviada pelo usuário: "${messageText}"`,
-  });
+  // Modelos em ordem de prioridade com fallback automático caso o tier da chave não suporte um deles
+  const candidateModels = [
+    "gemini-2.5-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-3.8-flash",
+    "gemini-flash-latest",
+  ];
 
-  return object;
+  let lastError: unknown;
+
+  for (const modelName of candidateModels) {
+    try {
+      const { object } = await generateObject({
+        model: google(modelName),
+        schema: WhatsAppFinancialExtractionSchema,
+        system: promptSystem,
+        prompt: `Mensagem enviada pelo usuário: "${messageText}"`,
+      });
+
+      return object;
+    } catch (error) {
+      lastError = error;
+      console.warn(
+        `[WHATSAPP_AI_MODEL_FALLBACK] Modelo ${modelName} falhou, tentando próximo modelo... Erro:`,
+        error instanceof Error ? error.message : error
+      );
+    }
+  }
+
+  throw lastError || new Error("Nenhum modelo do Gemini respondeu com sucesso.");
 }
