@@ -7,15 +7,82 @@ import { Sidebar } from "@/components/Sidebar";
 import { Header } from "@/components/Header";
 import { TabType } from "@/components/BottomNav";
 import { FloatingActionButton } from "@/components/FloatingActionButton";
+import dynamic from "next/dynamic";
 import { SummaryCards } from "@/components/dashboard/SummaryCards";
 import { AvalancheAlertCard } from "@/components/dashboard/AvalancheAlertCard";
-import { ChartsSection } from "@/components/dashboard/ChartsSection";
-import { TransactionsView } from "@/components/transactions/TransactionsView";
-import { LoansAvalancheView } from "@/components/loans/LoansAvalancheView";
-import { FixedAndReserveView } from "@/components/fixed-and-reserve/FixedAndReserveView";
-import { CardsView } from "@/components/cards/CardsView";
-import { NewTransactionModal } from "@/components/modals/NewTransactionModal";
-import { AmortizationModal } from "@/components/modals/AmortizationModal";
+
+// Esqueletos de Carregamento Estilizados (Design Quente, Orgânico e Aconchegante)
+const ChartsSkeleton = () => (
+  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 animate-pulse">
+    <div className="lg:col-span-2 h-72 rounded-[28px] bg-[#FBF9F5] border border-[#E6DEC8] p-5 flex flex-col justify-between shadow-sm">
+      <div className="flex items-center gap-2">
+        <div className="w-8 h-8 rounded-xl bg-[#E6DEC8]/60" />
+        <div className="h-5 w-48 bg-[#E6DEC8]/60 rounded-full" />
+      </div>
+      <div className="h-44 w-full bg-[#E6DEC8]/20 rounded-2xl" />
+    </div>
+    <div className="h-72 rounded-[28px] bg-[#FBF9F5] border border-[#E6DEC8] p-5 flex flex-col justify-between shadow-sm">
+      <div className="flex items-center gap-2">
+        <div className="w-8 h-8 rounded-xl bg-[#E6DEC8]/60" />
+        <div className="h-5 w-32 bg-[#E6DEC8]/60 rounded-full" />
+      </div>
+      <div className="h-44 w-full bg-[#E6DEC8]/20 rounded-2xl" />
+    </div>
+  </div>
+);
+
+const ViewSkeleton = () => (
+  <div className="space-y-4 animate-pulse">
+    <div className="h-28 rounded-[28px] bg-[#FBF9F5] border border-[#E6DEC8] p-5 flex items-center justify-between shadow-sm">
+      <div className="space-y-2">
+        <div className="h-5 w-48 bg-[#E6DEC8]/60 rounded-full" />
+        <div className="h-3 w-64 bg-[#E6DEC8]/40 rounded-full" />
+      </div>
+      <div className="h-10 w-28 bg-[#E6DEC8]/50 rounded-2xl" />
+    </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="h-48 rounded-[24px] bg-[#FBF9F5] border border-[#E6DEC8] p-4 shadow-sm" />
+      <div className="h-48 rounded-[24px] bg-[#FBF9F5] border border-[#E6DEC8] p-4 shadow-sm" />
+      <div className="h-48 rounded-[24px] bg-[#FBF9F5] border border-[#E6DEC8] p-4 shadow-sm" />
+    </div>
+  </div>
+);
+
+// Dynamic Views & Modals (Code Splitting e Lazy Loading)
+const ChartsSection = dynamic(
+  () => import("@/components/dashboard/ChartsSection").then((mod) => mod.ChartsSection),
+  { loading: () => <ChartsSkeleton />, ssr: false }
+);
+
+const TransactionsView = dynamic(
+  () => import("@/components/transactions/TransactionsView").then((mod) => mod.TransactionsView),
+  { loading: () => <ViewSkeleton />, ssr: false }
+);
+
+const CardsView = dynamic(
+  () => import("@/components/cards/CardsView").then((mod) => mod.CardsView),
+  { loading: () => <ViewSkeleton />, ssr: false }
+);
+
+const LoansAvalancheView = dynamic(
+  () => import("@/components/loans/LoansAvalancheView").then((mod) => mod.LoansAvalancheView),
+  { loading: () => <ViewSkeleton />, ssr: false }
+);
+
+const FixedAndReserveView = dynamic(
+  () => import("@/components/fixed-and-reserve/FixedAndReserveView").then((mod) => mod.FixedAndReserveView),
+  { loading: () => <ViewSkeleton />, ssr: false }
+);
+
+const NewTransactionModal = dynamic(
+  () => import("@/components/modals/NewTransactionModal").then((mod) => mod.NewTransactionModal),
+  { ssr: false }
+);
+
+const AmortizationModal = dynamic(
+  () => import("@/components/modals/AmortizationModal").then((mod) => mod.AmortizationModal),
+  { ssr: false }
+);
 
 function DashboardContent() {
   const { isAuthenticated } = useFinance();

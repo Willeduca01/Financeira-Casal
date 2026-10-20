@@ -16,7 +16,12 @@ import {
   KeyRound,
   LogOut,
 } from "lucide-react";
-import { ChangePinModal } from "@/components/modals/ChangePinModal";
+import dynamic from "next/dynamic";
+
+const ChangePinModal = dynamic(
+  () => import("@/components/modals/ChangePinModal").then((m) => m.ChangePinModal),
+  { ssr: false }
+);
 
 interface HeaderProps {
   onOpenMobileMenu?: () => void;

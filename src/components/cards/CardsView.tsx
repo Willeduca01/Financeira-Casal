@@ -22,10 +22,23 @@ import {
   Shield,
   ArrowRight,
 } from "lucide-react";
-import { NewCreditCardModal } from "@/components/modals/NewCreditCardModal";
-import { NewInstallmentModal } from "@/components/modals/NewInstallmentModal";
-import { NewBenefitCardModal } from "@/components/modals/NewBenefitCardModal";
+import dynamic from "next/dynamic";
 import { CreditCard, CreditCardInstallment, BenefitCard } from "@/types";
+
+const NewCreditCardModal = dynamic(
+  () => import("@/components/modals/NewCreditCardModal").then((m) => m.NewCreditCardModal),
+  { ssr: false }
+);
+
+const NewInstallmentModal = dynamic(
+  () => import("@/components/modals/NewInstallmentModal").then((m) => m.NewInstallmentModal),
+  { ssr: false }
+);
+
+const NewBenefitCardModal = dynamic(
+  () => import("@/components/modals/NewBenefitCardModal").then((m) => m.NewBenefitCardModal),
+  { ssr: false }
+);
 
 export const CardsView: React.FC = () => {
   const {
