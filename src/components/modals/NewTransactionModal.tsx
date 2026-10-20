@@ -11,7 +11,7 @@ import {
   BenefitType,
 } from "@/types";
 import { CATEGORY_DETAILS, PAYMENT_METHOD_DETAILS, INCOME_CATEGORY_DETAILS } from "@/lib/utils";
-import { X, Sparkles, Check, ArrowDownLeft, ArrowUpRight, Zap } from "lucide-react";
+import { X, Sparkles, Check, ArrowDownLeft, ArrowUpRight, Zap, CreditCard as CreditCardIcon } from "lucide-react";
 
 interface NewTransactionModalProps {
   isOpen: boolean;
@@ -34,6 +34,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
   const [expenseType, setExpenseType] = useState<ExpenseType>("VARIABLE");
   const [selectedUserId, setSelectedUserId] = useState(currentUser.id);
   const [selectedCardId, setSelectedCardId] = useState<string>("");
+  const [selectedBenefitCardId, setSelectedBenefitCardId] = useState<string>("");
 
   // Campos de Receita
   const [incomeDescription, setIncomeDescription] = useState("");
@@ -45,6 +46,35 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
 
   if (!isOpen) return null;
 
+  // Selecionar Meio de Pagamento com auto-seleção de cartão
+  const handleSelectPaymentMethod = (method: PaymentMethod) => {
+    setPaymentMethod(method);
+    if (method === "CREDIT_CARD") {
+      const defaultCard =
+        creditCards.find((c) => c.userId === selectedUserId) || creditCards[0];
+      if (defaultCard) setSelectedCardId(defaultCard.id);
+    } else if (method === "VR" || method === "VA") {
+      const defaultBenefit =
+        benefitCards.find((b) => b.userId === selectedUserId && b.type === method) ||
+        benefitCards.find((b) => b.type === method);
+      if (defaultBenefit) setSelectedBenefitCardId(defaultBenefit.id);
+    }
+  };
+
+  // Trocar usuário com auto-atualização de cartões
+  const handleSelectUser = (uId: string) => {
+    setSelectedUserId(uId);
+    if (paymentMethod === "CREDIT_CARD") {
+      const userCard = creditCards.find((c) => c.userId === uId) || creditCards[0];
+      if (userCard) setSelectedCardId(userCard.id);
+    } else if (paymentMethod === "VR" || paymentMethod === "VA") {
+      const userBenefit =
+        benefitCards.find((b) => b.userId === uId && b.type === paymentMethod) ||
+        benefitCards.find((b) => b.type === paymentMethod);
+      if (userBenefit) setSelectedBenefitCardId(userBenefit.id);
+    }
+  };
+
   // Atalhos Rápidos para Despesas (Menos de 10 segundos!)
   const applyQuickPreset = (preset: {
     desc: string;
@@ -53,7 +83,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
   }) => {
     setDescription(preset.desc);
     setCategory(preset.cat);
-    setPaymentMethod(preset.method);
+    handleSelectPaymentMethod(preset.method);
     setExpenseType("VARIABLE");
   };
 
@@ -61,6 +91,19 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
     e.preventDefault();
     const parsedAmount = parseFloat(amount.replace(",", "."));
     if (parsedAmount > 0 && description.trim()) {
+      let finalCreditCardId: string | undefined = selectedCardId || undefined;
+      if (paymentMethod === "CREDIT_CARD" && !finalCreditCardId && creditCards.length > 0) {
+        finalCreditCardId =
+          creditCards.find((c) => c.userId === selectedUserId)?.id || creditCards[0]?.id;
+      }
+
+      let finalBenefitCardId: string | undefined = selectedBenefitCardId || undefined;
+      if ((paymentMethod === "VR" || paymentMethod === "VA") && !finalBenefitCardId && benefitCards.length > 0) {
+        finalBenefitCardId =
+          benefitCards.find((b) => b.userId === selectedUserId && b.type === paymentMethod)?.id ||
+          benefitCards.find((b) => b.type === paymentMethod)?.id;
+      }
+
       addExpense({
         description: description.trim(),
         amount: parsedAmount,
@@ -70,12 +113,17 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
         paymentMethod,
         isPaid: true,
         userId: selectedUserId,
-        creditCardId: paymentMethod === "CREDIT_CARD" ? selectedCardId || undefined : undefined,
+        creditCardId: paymentMethod === "CREDIT_CARD" ? finalCreditCardId || undefined : undefined,
+        benefitCardId:
+          paymentMethod === "VR" || paymentMethod === "VA"
+            ? finalBenefitCardId || undefined
+            : undefined,
       });
       // Reset form
       setDescription("");
       setAmount("");
       setSelectedCardId("");
+      setSelectedBenefitCardId("");
       onClose();
     }
   };
@@ -154,7 +202,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
               <button
                 key={u.id}
                 type="button"
-                onClick={() => setSelectedUserId(u.id)}
+                onClick={() => handleSelectUser(u.id)}
                 className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all ${
                   selectedUserId === u.id
                     ? "bg-[#C46D53] text-[#FBF9F5] shadow-sm ring-2 ring-[#C46D53]/30"
@@ -302,7 +350,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
                     <button
                       key={method}
                       type="button"
-                      onClick={() => setPaymentMethod(method)}
+                      onClick={() => handleSelectPaymentMethod(method)}
                       className={`p-2.5 rounded-2xl text-left border text-xs transition-all ${
                         isSelected
                           ? "bg-[#C46D53]/12 border-[#C46D53] text-[#2C221E] shadow-sm ring-1 ring-[#C46D53]"
@@ -318,22 +366,124 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
 
               {/* Seletor dinâmico de Cartão de Crédito se o método for Cartão */}
               {paymentMethod === "CREDIT_CARD" && creditCards.length > 0 && (
-                <div className="mt-2.5 bg-[#C46D53]/10 border border-[#C46D53]/25 p-2.5 rounded-2xl animate-in fade-in duration-150">
-                  <label className="text-[11px] text-[#2C221E] font-bold block mb-1">
-                    Vincular ao Cartão de Crédito:
-                  </label>
-                  <select
-                    value={selectedCardId}
-                    onChange={(e) => setSelectedCardId(e.target.value)}
-                    className="w-full bg-[#FBF9F5] border border-[#E6DEC8] rounded-xl px-3 py-2 text-xs font-bold text-[#2C221E] focus:outline-hidden"
-                  >
-                    <option value="">Selecione o cartão...</option>
-                    {creditCards.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} ({c.bank}) &bull; Limite Liberado: R$ {c.availableLimit.toFixed(2)}
-                      </option>
-                    ))}
-                  </select>
+                <div className="mt-3 bg-[#FBF9F5] border-2 border-[#C46D53]/30 p-3 rounded-2xl animate-in fade-in duration-150 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs text-[#2C221E] font-bold flex items-center gap-1.5">
+                      <CreditCardIcon size={14} className="text-[#C46D53]" />
+                      Qual Cartão foi Utilizado?
+                    </label>
+                    <span className="text-[10px] text-[#C46D53] font-semibold bg-[#C46D53]/10 px-2 py-0.5 rounded-full">
+                      Abate do limite liberado
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {creditCards.map((c) => {
+                      const isSelected = selectedCardId === c.id;
+                      const owner = users.find((u) => u.id === c.userId);
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => setSelectedCardId(c.id)}
+                          className={`p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                            isSelected
+                              ? "bg-[#2C221E] text-white border-[#2C221E] shadow-sm ring-2 ring-[#C46D53]"
+                              : "bg-[#F4EFE6] border-[#E6DEC8] text-[#2C221E] hover:bg-[#E6DEC8]/60"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-1 mb-1.5">
+                            <span className="font-bold text-xs truncate flex items-center gap-1.5">
+                              <span
+                                className="w-2.5 h-2.5 rounded-full shrink-0"
+                                style={{ backgroundColor: c.color }}
+                              />
+                              {c.name}
+                            </span>
+                            <span
+                              className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${
+                                isSelected ? "bg-white/20 text-white" : "bg-[#2C221E]/10 text-[#786B5E]"
+                              }`}
+                            >
+                              {owner?.name.split(" ")[0]}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className={isSelected ? "text-white/70" : "text-[#786B5E]"}>
+                              Liberado:
+                            </span>
+                            <span className={`font-black px-1.5 py-0.5 rounded-md ${
+                              isSelected ? "text-[#97D487] bg-white/10" : "text-[#5B7052] bg-[#5B7052]/15"
+                            }`}>
+                              R$ {c.availableLimit.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Seletor dinâmico de Cartão Benefício (VR ou VA) */}
+              {(paymentMethod === "VR" || paymentMethod === "VA") && benefitCards.length > 0 && (
+                <div className="mt-3 bg-[#FBF9F5] border border-[#7A8B68]/40 p-3 rounded-2xl animate-in fade-in duration-150 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs text-[#2C221E] font-bold flex items-center gap-1.5">
+                      Qual Cartão de Benefício?
+                    </label>
+                    <span className="text-[10px] text-[#7A8B68] font-semibold bg-[#7A8B68]/10 px-2 py-0.5 rounded-full">
+                      Abate do saldo do cartão
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {benefitCards
+                      .filter((b) => b.type === paymentMethod)
+                      .map((b) => {
+                        const isSelected = selectedBenefitCardId === b.id;
+                        const owner = users.find((u) => u.id === b.userId);
+                        return (
+                          <button
+                            key={b.id}
+                            type="button"
+                            onClick={() => setSelectedBenefitCardId(b.id)}
+                            className={`p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                              isSelected
+                                ? "bg-[#5B7052] text-white border-[#5B7052] shadow-sm ring-2 ring-[#7A8B68]"
+                                : "bg-[#F4EFE6] border-[#E6DEC8] text-[#2C221E] hover:bg-[#E6DEC8]/60"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-1 mb-1.5">
+                              <span className="font-bold text-xs truncate flex items-center gap-1.5">
+                                <span
+                                  className="w-2.5 h-2.5 rounded-full shrink-0"
+                                  style={{ backgroundColor: b.color }}
+                                />
+                                {b.name}
+                              </span>
+                              <span
+                                className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${
+                                  isSelected ? "bg-white/20 text-white" : "bg-[#2C221E]/10 text-[#786B5E]"
+                                }`}
+                              >
+                                {owner?.name.split(" ")[0]}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className={isSelected ? "text-white/70" : "text-[#786B5E]"}>
+                                Saldo:
+                              </span>
+                              <span className={`font-black px-1.5 py-0.5 rounded-md ${
+                                isSelected ? "text-[#97D487] bg-white/10" : "text-[#7A8B68] bg-[#7A8B68]/15"
+                              }`}>
+                                R$ {b.currentBalance.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                  </div>
                 </div>
               )}
             </div>

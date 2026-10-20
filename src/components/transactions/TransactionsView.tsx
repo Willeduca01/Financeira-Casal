@@ -19,7 +19,16 @@ import {
 } from "lucide-react";
 
 export const TransactionsView: React.FC = () => {
-  const { expenses, incomes, users, deleteExpense, deleteIncome } = useFinance();
+  const {
+    expenses,
+    incomes,
+    users,
+    creditCards,
+    benefitCards,
+    deleteExpense,
+    deleteIncome,
+    updateExpense,
+  } = useFinance();
 
   const [filterUser, setFilterUser] = useState<string>("ALL");
   const [filterWallet, setFilterWallet] = useState<string>("ALL");
@@ -39,6 +48,8 @@ export const TransactionsView: React.FC = () => {
       paymentMethod?: string;
       walletType?: string;
       expenseType?: string;
+      creditCardId?: string;
+      benefitCardId?: string;
     }> = [];
 
     incomes.forEach((inc) => {
@@ -65,6 +76,8 @@ export const TransactionsView: React.FC = () => {
         category: exp.category,
         paymentMethod: exp.paymentMethod,
         expenseType: exp.expenseType,
+        creditCardId: exp.creditCardId,
+        benefitCardId: exp.benefitCardId,
       });
     });
 
@@ -266,11 +279,101 @@ export const TransactionsView: React.FC = () => {
                         {user.name.split(" ")[0]}
                       </span>
 
-                      {/* Badge do Meio / Carteira */}
-                      {paymentDetails && (
-                        <span className="px-2 py-0.5 rounded-full bg-[#F4EFE6] border border-[#E6DEC8] text-[10px] font-medium text-[#786B5E]">
-                          {paymentDetails.label}
-                        </span>
+                      {/* Badge do Meio / Identificação do Cartão / Carteira */}
+                      {tx.paymentMethod === "CREDIT_CARD" ? (
+                        (() => {
+                          const linkedCard = creditCards.find((c) => c.id === tx.creditCardId);
+                          if (linkedCard) {
+                            return (
+                              <div className="inline-flex items-center gap-1">
+                                <span
+                                  className="px-2.5 py-0.5 rounded-full text-[10px] font-bold text-white flex items-center gap-1.5 shadow-xs"
+                                  style={{
+                                    background: `linear-gradient(135deg, ${linkedCard.color} 0%, #2C221E 130%)`,
+                                  }}
+                                  title={`Gasto debitado do ${linkedCard.name} (${linkedCard.bank}) - Limite Liberado Atual: ${formatBRL(linkedCard.availableLimit)}`}
+                                >
+                                  <CreditCard size={10} className="stroke-[2.5]" />
+                                  <span>{linkedCard.name}</span>
+                                  {linkedCard.lastFourDigits && (
+                                    <span className="opacity-80 font-mono text-[9px]">
+                                      &bull; {linkedCard.lastFourDigits}
+                                    </span>
+                                  )}
+                                </span>
+                                {/* Botão sutil para trocar de cartão se necessário */}
+                                <select
+                                  value={linkedCard.id}
+                                  onChange={(e) => {
+                                    if (e.target.value) {
+                                      updateExpense(tx.id, { creditCardId: e.target.value });
+                                    }
+                                  }}
+                                  className="opacity-0 w-3 -ml-4 cursor-pointer text-[10px]"
+                                  title="Trocar cartão de crédito vinculado"
+                                >
+                                  {creditCards.map((c) => (
+                                    <option key={c.id} value={c.id}>
+                                      {c.name} ({c.bank})
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            );
+                          }
+
+                          // Não vinculado (ex: gasto teste prévio do usuário)
+                          return (
+                            <div className="relative inline-flex items-center">
+                              <select
+                                value=""
+                                onChange={(e) => {
+                                  if (e.target.value) {
+                                    updateExpense(tx.id, { creditCardId: e.target.value });
+                                  }
+                                }}
+                                className="px-2.5 py-0.5 rounded-full bg-[#CC0000]/12 border border-[#CC0000]/40 text-[#CC0000] text-[10px] font-bold cursor-pointer hover:bg-[#CC0000]/20 transition-all focus:outline-hidden"
+                                title="Clique para definir qual cartão pagou este lançamento e abater o valor do limite"
+                              >
+                                <option value="">⚠️ Cartão não vinculado (Vincular...)</option>
+                                {creditCards.map((c) => (
+                                  <option key={c.id} value={c.id}>
+                                    💳 {c.name} ({c.bank}) &bull; Limite: {formatBRL(c.availableLimit)}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          );
+                        })()
+                      ) : (tx.paymentMethod === "VR" || tx.paymentMethod === "VA") ? (
+                        (() => {
+                          const linkedBenefit = benefitCards.find((b) => b.id === tx.benefitCardId);
+                          if (linkedBenefit) {
+                            return (
+                              <span
+                                className="px-2 py-0.5 rounded-full text-[10px] font-bold text-white flex items-center gap-1 shadow-xs"
+                                style={{ backgroundColor: linkedBenefit.color }}
+                                title={`Gasto no cartão ${linkedBenefit.name}`}
+                              >
+                                <UtensilsCrossed size={10} />
+                                <span>{linkedBenefit.name}</span>
+                              </span>
+                            );
+                          }
+                          return (
+                            paymentDetails && (
+                              <span className="px-2 py-0.5 rounded-full bg-[#F4EFE6] border border-[#E6DEC8] text-[10px] font-medium text-[#786B5E]">
+                                {paymentDetails.label}
+                              </span>
+                            )
+                          );
+                        })()
+                      ) : (
+                        paymentDetails && (
+                          <span className="px-2 py-0.5 rounded-full bg-[#F4EFE6] border border-[#E6DEC8] text-[10px] font-medium text-[#786B5E]">
+                            {paymentDetails.label}
+                          </span>
+                        )
                       )}
 
                       {tx.isIncome && (

@@ -80,6 +80,7 @@ export interface Expense {
   creditCardInvoiceMonth?: string;
   loanId?: string;
   creditCardId?: string;
+  benefitCardId?: string;
   userId: string;
 }
 

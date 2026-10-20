@@ -55,6 +55,7 @@ interface FinanceContextType {
 
   // Ações CRUD
   addExpense: (expense: Omit<Expense, "id" | "userId"> & { userId?: string }) => void;
+  updateExpense: (id: string, updated: Partial<Expense>) => void;
   deleteExpense: (id: string) => void;
   toggleFixedExpensePaid: (id: string) => void;
   addIncome: (income: Omit<Income, "id" | "userId"> & { userId?: string }) => void;
@@ -493,9 +494,114 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       userId: expenseData.userId || currentUser.id,
     };
     setExpenses((prev) => [newExpense, ...prev]);
+
+    // Abater do limite liberado do cartão de crédito
+    if (newExpense.paymentMethod === "CREDIT_CARD" && newExpense.creditCardId) {
+      setCreditCards((prevCards) =>
+        prevCards.map((c) => {
+          if (c.id === newExpense.creditCardId) {
+            return {
+              ...c,
+              availableLimit: Math.max(0, Number((c.availableLimit - newExpense.amount).toFixed(2))),
+            };
+          }
+          return c;
+        })
+      );
+    }
+
+    // Abater do saldo do cartão de benefício (VR ou VA)
+    if (
+      (newExpense.paymentMethod === "VR" || newExpense.paymentMethod === "VA") &&
+      newExpense.benefitCardId
+    ) {
+      setBenefitCards((prevCards) =>
+        prevCards.map((b) => {
+          if (b.id === newExpense.benefitCardId) {
+            return {
+              ...b,
+              currentBalance: Math.max(0, Number((b.currentBalance - newExpense.amount).toFixed(2))),
+            };
+          }
+          return b;
+        })
+      );
+    }
+  };
+
+  const updateExpense = (id: string, updatedData: Partial<Expense>) => {
+    const existing = expenses.find((e) => e.id === id);
+    if (!existing) return;
+
+    const merged: Expense = { ...existing, ...updatedData };
+
+    // Sincronizar limites de cartão de crédito caso o cartão ou o valor tenham mudado
+    const oldCardId = existing.paymentMethod === "CREDIT_CARD" ? existing.creditCardId : undefined;
+    const newCardId = merged.paymentMethod === "CREDIT_CARD" ? merged.creditCardId : undefined;
+
+    if (oldCardId !== newCardId || existing.amount !== merged.amount) {
+      setCreditCards((prevCards) =>
+        prevCards.map((c) => {
+          let limit = c.availableLimit;
+          // Devolve o valor ao cartão antigo se havia
+          if (oldCardId && c.id === oldCardId) {
+            limit += existing.amount;
+          }
+          // Subtrai o valor do novo cartão se vinculado
+          if (newCardId && c.id === newCardId) {
+            limit -= merged.amount;
+          }
+          return {
+            ...c,
+            availableLimit: Math.min(c.totalLimit, Math.max(0, Number(limit.toFixed(2)))),
+          };
+        })
+      );
+    }
+
+    setExpenses((prev) => prev.map((e) => (e.id === id ? merged : e)));
   };
 
   const deleteExpense = (id: string) => {
+    const expenseToDelete = expenses.find((e) => e.id === id);
+    if (expenseToDelete) {
+      // Estornar limite do cartão de crédito
+      if (expenseToDelete.paymentMethod === "CREDIT_CARD" && expenseToDelete.creditCardId) {
+        setCreditCards((prevCards) =>
+          prevCards.map((c) => {
+            if (c.id === expenseToDelete.creditCardId) {
+              return {
+                ...c,
+                availableLimit: Math.min(
+                  c.totalLimit,
+                  Number((c.availableLimit + expenseToDelete.amount).toFixed(2))
+                ),
+              };
+            }
+            return c;
+          })
+        );
+      }
+
+      // Estornar saldo do cartão de benefício
+      if (
+        (expenseToDelete.paymentMethod === "VR" || expenseToDelete.paymentMethod === "VA") &&
+        expenseToDelete.benefitCardId
+      ) {
+        setBenefitCards((prevCards) =>
+          prevCards.map((b) => {
+            if (b.id === expenseToDelete.benefitCardId) {
+              return {
+                ...b,
+                currentBalance: Number((b.currentBalance + expenseToDelete.amount).toFixed(2)),
+              };
+            }
+            return b;
+          })
+        );
+      }
+    }
+
     setExpenses((prev) => prev.filter((e) => e.id !== id));
   };
 
@@ -787,6 +893,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
         installments,
         benefitCards,
         addExpense,
+        updateExpense,
         deleteExpense,
         toggleFixedExpensePaid,
         addIncome,

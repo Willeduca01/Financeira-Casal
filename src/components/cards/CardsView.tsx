@@ -30,6 +30,7 @@ import { CreditCard, CreditCardInstallment, BenefitCard } from "@/types";
 export const CardsView: React.FC = () => {
   const {
     users,
+    expenses,
     creditCards,
     installments,
     benefitCards,
@@ -359,6 +360,9 @@ export const CardsView: React.FC = () => {
               {filteredCreditCards.map((card) => {
                 const cardUser = users.find((u) => u.id === card.userId);
                 const cardInstallments = installments.filter((i) => i.cardId === card.id);
+                const cardExpenses = expenses.filter(
+                  (e) => e.paymentMethod === "CREDIT_CARD" && e.creditCardId === card.id
+                );
                 const isExpanded = !!expandedCards[card.id];
                 const committedAmount = Math.max(0, card.totalLimit - card.availableLimit);
                 const usedPercent = Math.min(
@@ -580,6 +584,49 @@ export const CardsView: React.FC = () => {
                                 );
                               })
                             )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Seção de Gastos Avulsos no Cartão */}
+                      <div className="border-t border-[#E8DFD1] pt-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="flex items-center gap-1.5 text-xs font-bold text-[#2C221E]">
+                            <ShoppingBag size={14} className="text-[#C46D53]" />
+                            <span>Gastos Recentes no Cartão ({cardExpenses.length})</span>
+                          </span>
+                          {cardExpenses.length > 0 && (
+                            <span className="text-[11px] font-bold text-[#C46D53]">
+                              Total: R$ {cardExpenses.reduce((s, e) => s + e.amount, 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                            </span>
+                          )}
+                        </div>
+
+                        {cardExpenses.length === 0 ? (
+                          <p className="text-[11px] text-[#786B5E] italic py-2 px-3 bg-[#F4EFE6]/40 rounded-xl text-center">
+                            Nenhum gasto avulso vinculado a este cartão este mês.
+                          </p>
+                        ) : (
+                          <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                            {cardExpenses.map((exp) => {
+                              const expUser = users.find((u) => u.id === exp.userId);
+                              return (
+                                <div
+                                  key={exp.id}
+                                  className="p-2.5 rounded-xl bg-[#F4EFE6]/80 border border-[#E8DFD1] flex items-center justify-between text-xs hover:border-[#C46D53]/30 transition-colors"
+                                >
+                                  <div className="truncate mr-2">
+                                    <p className="font-bold text-[#2C221E] truncate">{exp.description}</p>
+                                    <span className="text-[10px] text-[#786B5E]">
+                                      {new Date(exp.date).toLocaleDateString("pt-BR")} &bull; {expUser?.name.split(" ")[0]} &bull; Abatido do limite
+                                    </span>
+                                  </div>
+                                  <span className="font-black text-[#2C221E] shrink-0">
+                                    - R$ {exp.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                                  </span>
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
