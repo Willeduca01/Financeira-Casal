@@ -69,6 +69,11 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Rotas públicas / Webhooks externos da Meta (WhatsApp Cloud API)
+  if (pathname.startsWith("/api/whatsapp/webhook")) {
+    return NextResponse.next();
+  }
+
   const now = Date.now();
   purgeExpiredRecords(now);
 

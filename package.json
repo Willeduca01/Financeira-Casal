@@ -17,8 +17,10 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@ai-sdk/google": "^3.0.136",
     "@prisma/client": "6.4.1",
     "@types/canvas-confetti": "^1.9.0",
+    "ai": "^6.0.311",
     "bcryptjs": "^3.0.3",
     "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.1",
