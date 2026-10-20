@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { useFinance } from "@/context/FinanceContext";
 import { formatBRL, formatPercent, formatDateBR } from "@/lib/utils";
 import { Loan } from "@/types";
@@ -20,7 +20,7 @@ interface LoansAvalancheViewProps {
   onOpenAmortize: (loanId?: string) => void;
 }
 
-export const LoansAvalancheView: React.FC<LoansAvalancheViewProps> = ({
+export const LoansAvalancheView: React.FC<LoansAvalancheViewProps> = React.memo(({
   onOpenAmortize,
 }) => {
   const {
@@ -40,22 +40,34 @@ export const LoansAvalancheView: React.FC<LoansAvalancheViewProps> = ({
 
   const [payingLoanId, setPayingLoanId] = useState<string | null>(null);
 
-  const handlePayInstallment = (loan: Loan) => {
-    setPayingLoanId(loan.id);
-    setTimeout(() => {
-      payMonthlyInstallment(loan.id);
-      setPayingLoanId(null);
+  // Mapa O(1) de empréstimos por ID para evitar buscas repetidas O(N) nas amortizações
+  const loanMap = useMemo(() => {
+    const map = new Map<string, Loan>();
+    for (const l of sortedLoans) {
+      map.set(l.id, l);
+    }
+    return map;
+  }, [sortedLoans]);
 
-      // Se for a última parcela, comemorar!
-      if (loan.paidInstallments + 1 >= loan.totalInstallments) {
-        confetti({
-          particleCount: 120,
-          spread: 80,
-          origin: { y: 0.6 },
-        });
-      }
-    }, 300);
-  };
+  const handlePayInstallment = useCallback(
+    (loan: Loan) => {
+      setPayingLoanId(loan.id);
+      setTimeout(() => {
+        payMonthlyInstallment(loan.id);
+        setPayingLoanId(null);
+
+        // Se for a última parcela, comemorar!
+        if (loan.paidInstallments + 1 >= loan.totalInstallments) {
+          confetti({
+            particleCount: 120,
+            spread: 80,
+            origin: { y: 0.6 },
+          });
+        }
+      }, 300);
+    },
+    [payMonthlyInstallment]
+  );
 
   return (
     <div className="space-y-5">
@@ -276,7 +288,7 @@ export const LoansAvalancheView: React.FC<LoansAvalancheViewProps> = ({
         {amortizations.length > 0 ? (
           <div className="space-y-2">
             {amortizations.map((amort) => {
-              const loan = sortedLoans.find((l) => l.id === amort.loanId);
+              const loan = loanMap.get(amort.loanId);
               return (
                 <div
                   key={amort.id}
@@ -324,4 +336,4 @@ export const LoansAvalancheView: React.FC<LoansAvalancheViewProps> = ({
       </div>
     </div>
   );
-};
+});

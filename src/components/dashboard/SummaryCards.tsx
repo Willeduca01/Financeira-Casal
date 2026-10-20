@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import { useFinance } from "@/context/FinanceContext";
 import { formatBRL } from "@/lib/utils";
 import {
@@ -15,7 +15,7 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 
-export const SummaryCards: React.FC = () => {
+export const SummaryCards: React.FC = React.memo(() => {
   const {
     freeWallet,
     benefitsWallet,
@@ -24,6 +24,24 @@ export const SummaryCards: React.FC = () => {
     expenseStats,
     emergencyFundMetrics,
   } = useFinance();
+
+  const formatted = useMemo(
+    () => ({
+      currentBalance: formatBRL(freeWallet.currentBalance),
+      projectedSurplus: formatBRL(freeWallet.projectedSurplus),
+      remainingTotal: formatBRL(benefitsWallet.remainingTotal),
+      remainingVR: formatBRL(benefitsWallet.remainingVR),
+      remainingVA: formatBRL(benefitsWallet.remainingVA),
+      vrUsagePercent: benefitsWallet.vrUsagePercent.toFixed(0),
+      vaUsagePercent: benefitsWallet.vaUsagePercent.toFixed(0),
+      emergencyCurrentAmount: formatBRL(emergencyFundMetrics.currentAmount),
+      emergencyTargetSixMonths: formatBRL(emergencyFundMetrics.targets.sixMonths),
+      emergencyProgressClamped: Math.min(100, emergencyFundMetrics.progressPercent),
+      totalNet: formatBRL(incomeStats.totalNet),
+      totalGross: formatBRL(incomeStats.totalGross),
+    }),
+    [freeWallet, benefitsWallet, emergencyFundMetrics, incomeStats]
+  );
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -56,7 +74,7 @@ export const SummaryCards: React.FC = () => {
 
           <div className="my-2">
             <p className="text-3xl font-extrabold text-[#2C221E] tracking-tight">
-              {formatBRL(freeWallet.currentBalance)}
+              {formatted.currentBalance}
             </p>
             <p className="text-[11px] font-medium text-[#786B5E] mt-1 flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-[#C46D53]" />
@@ -69,7 +87,7 @@ export const SummaryCards: React.FC = () => {
           <span className="text-[#786B5E]">Sobra projetada mês:</span>
           <span className="font-bold text-[#C46D53] bg-[#C46D53]/10 px-2 py-0.5 rounded-full flex items-center gap-1">
             <Sparkles size={11} />
-            {formatBRL(freeWallet.projectedSurplus)}
+            {formatted.projectedSurplus}
           </span>
         </div>
       </div>
@@ -97,7 +115,7 @@ export const SummaryCards: React.FC = () => {
 
           <div className="my-2">
             <p className="text-3xl font-extrabold text-[#2C221E] tracking-tight">
-              {formatBRL(benefitsWallet.remainingTotal)}
+              {formatted.remainingTotal}
             </p>
             <p className="text-[11px] text-[#786B5E] mt-1">
               Saldo total restante nos cartões
@@ -109,8 +127,8 @@ export const SummaryCards: React.FC = () => {
         <div className="space-y-2 pt-2 border-t border-[#E6DEC8]">
           <div>
             <div className="flex justify-between text-[10px] text-[#786B5E] font-medium mb-1">
-              <span>VR: <strong className="text-[#2C221E]">{formatBRL(benefitsWallet.remainingVR)}</strong></span>
-              <span>{benefitsWallet.vrUsagePercent.toFixed(0)}% usado</span>
+              <span>VR: <strong className="text-[#2C221E]">{formatted.remainingVR}</strong></span>
+              <span>{formatted.vrUsagePercent}% usado</span>
             </div>
             <div className="w-full bg-[#E6DEC8] rounded-full h-1.5 overflow-hidden">
               <div
@@ -122,8 +140,8 @@ export const SummaryCards: React.FC = () => {
 
           <div>
             <div className="flex justify-between text-[10px] text-[#786B5E] font-medium mb-1">
-              <span>VA: <strong className="text-[#2C221E]">{formatBRL(benefitsWallet.remainingVA)}</strong></span>
-              <span>{benefitsWallet.vaUsagePercent.toFixed(0)}% usado</span>
+              <span>VA: <strong className="text-[#2C221E]">{formatted.remainingVA}</strong></span>
+              <span>{formatted.vaUsagePercent}% usado</span>
             </div>
             <div className="w-full bg-[#E6DEC8] rounded-full h-1.5 overflow-hidden">
               <div
@@ -158,10 +176,10 @@ export const SummaryCards: React.FC = () => {
 
           <div className="my-2">
             <p className="text-3xl font-extrabold text-[#2C221E] tracking-tight">
-              {formatBRL(emergencyFundMetrics.currentAmount)}
+              {formatted.emergencyCurrentAmount}
             </p>
             <p className="text-[11px] text-[#786B5E] mt-1">
-              Meta ideal: {formatBRL(emergencyFundMetrics.targets.sixMonths)}
+              Meta ideal: {formatted.emergencyTargetSixMonths}
             </p>
           </div>
         </div>
@@ -175,7 +193,7 @@ export const SummaryCards: React.FC = () => {
           <div className="w-full bg-[#E6DEC8] rounded-full h-2 overflow-hidden">
             <div
               className="bg-[#7A8B68] h-full rounded-full transition-all duration-700"
-              style={{ width: `${Math.min(100, emergencyFundMetrics.progressPercent)}%` }}
+              style={{ width: `${formatted.emergencyProgressClamped}%` }}
             />
           </div>
         </div>
@@ -204,10 +222,10 @@ export const SummaryCards: React.FC = () => {
 
           <div className="my-2">
             <p className="text-3xl font-extrabold text-[#2C221E] tracking-tight">
-              {formatBRL(incomeStats.totalNet)}
+              {formatted.totalNet}
             </p>
             <p className="text-[11px] text-[#786B5E] mt-1">
-              Bruto nominal: <span className="line-through text-[#786B5E]/60">{formatBRL(incomeStats.totalGross)}</span>
+              Bruto nominal: <span className="line-through text-[#786B5E]/60">{formatted.totalGross}</span>
             </p>
           </div>
         </div>
@@ -234,4 +252,4 @@ export const SummaryCards: React.FC = () => {
       </div>
     </div>
   );
-};
+});
