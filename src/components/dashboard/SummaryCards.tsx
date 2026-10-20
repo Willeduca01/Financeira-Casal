@@ -2,15 +2,17 @@
 
 import React from "react";
 import { useFinance } from "@/context/FinanceContext";
-import { formatBRL, formatPercent } from "@/lib/utils";
+import { formatBRL } from "@/lib/utils";
 import {
   Wallet,
-  UtensilsCrossed,
-  ArrowUpRight,
-  TrendingDown,
+  Utensils,
+  Sprout,
+  Users,
+  Info,
   Sparkles,
+  TrendingDown,
   CreditCard,
-  AlertCircle,
+  ArrowUpRight,
 } from "lucide-react";
 
 export const SummaryCards: React.FC = () => {
@@ -20,98 +22,112 @@ export const SummaryCards: React.FC = () => {
     creditCard,
     incomeStats,
     expenseStats,
-    avalanche,
+    emergencyFundMetrics,
   } = useFinance();
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-      {/* CARD 1: Carteira Livre (Pote Único) */}
-      <div className="glass-panel rounded-2xl p-4 relative overflow-hidden border-emerald-500/20 bg-gradient-to-br from-slate-900/90 to-emerald-950/20 shadow-lg">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30">
-              <Wallet size={16} />
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* CARD 1: Pote Único / Saldo Livre (Destaque Papel Artesanal) */}
+      <div className="organic-card p-5 relative overflow-hidden flex flex-col justify-between">
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-2xl bg-[#C46D53]/15 text-[#C46D53] flex items-center justify-center border border-[#C46D53]/20">
+                <Wallet size={18} />
+              </div>
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#786B5E]">
+                  Pote Único
+                </span>
+                <p className="text-[10px] text-[#C46D53] font-semibold">Carteira Livre (Pix/Débito)</p>
+              </div>
             </div>
-            <div>
-              <span className="text-[11px] font-semibold text-slate-300 uppercase tracking-wider">
-                Carteira Livre
-              </span>
-              <p className="text-[10px] text-emerald-400 font-medium">Pote Único Casal</p>
+
+            <div className="group relative">
+              <button
+                className="text-[#786B5E]/60 hover:text-[#2C221E] transition-colors p-1"
+                title="Saldo disponível após pagamento de contas do mês"
+                aria-label="Informações sobre o pote único"
+              >
+                <Info size={15} />
+              </button>
             </div>
           </div>
-          <span className="text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">
-            Conta Corrente / Pix
-          </span>
+
+          <div className="my-2">
+            <p className="text-3xl font-extrabold text-[#2C221E] tracking-tight">
+              {formatBRL(freeWallet.currentBalance)}
+            </p>
+            <p className="text-[11px] font-medium text-[#786B5E] mt-1 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#C46D53]" />
+              Foco: Quitar dívidas
+            </p>
+          </div>
         </div>
 
-        <div className="my-2">
-          <p className="text-2xl font-black text-white tracking-tight">
-            {formatBRL(freeWallet.currentBalance)}
-          </p>
-          <p className="text-[11px] text-slate-400 mt-0.5">
-            Disponível após contas pagas
-          </p>
-        </div>
-
-        <div className="pt-2 border-t border-white/10 flex items-center justify-between text-[11px]">
-          <span className="text-slate-400">Sobra projetada mês:</span>
-          <span className="font-bold text-emerald-400 flex items-center gap-1">
-            <Sparkles size={12} />
+        <div className="pt-3 mt-2 border-t border-[#E6DEC8] flex items-center justify-between text-xs">
+          <span className="text-[#786B5E]">Sobra projetada mês:</span>
+          <span className="font-bold text-[#C46D53] bg-[#C46D53]/10 px-2 py-0.5 rounded-full flex items-center gap-1">
+            <Sparkles size={11} />
             {formatBRL(freeWallet.projectedSurplus)}
           </span>
         </div>
       </div>
 
       {/* CARD 2: Carteira de Benefícios (VR & VA) */}
-      <div className="glass-panel rounded-2xl p-4 relative overflow-hidden border-amber-500/20 bg-gradient-to-br from-slate-900/90 to-amber-950/20 shadow-lg">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-500/30">
-              <UtensilsCrossed size={16} />
+      <div className="organic-card p-5 relative overflow-hidden flex flex-col justify-between">
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-2xl bg-[#D99B52]/15 text-[#D99B52] flex items-center justify-center border border-[#D99B52]/20">
+                <Utensils size={18} />
+              </div>
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#786B5E]">
+                  Alimentação
+                </span>
+                <p className="text-[10px] text-[#D99B52] font-semibold">Carteira VR & VA</p>
+              </div>
             </div>
-            <div>
-              <span className="text-[11px] font-semibold text-slate-300 uppercase tracking-wider">
-                Benefícios (VR/VA)
-              </span>
-              <p className="text-[10px] text-amber-400 font-medium">Uso em Alimentação</p>
-            </div>
+
+            <span className="text-[10px] font-bold bg-[#D99B52]/15 text-[#9A6424] px-2 py-0.5 rounded-full">
+              Cartões
+            </span>
           </div>
-          <span className="text-[10px] font-semibold bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/30">
-            Cartões
-          </span>
+
+          <div className="my-2">
+            <p className="text-3xl font-extrabold text-[#2C221E] tracking-tight">
+              {formatBRL(benefitsWallet.remainingTotal)}
+            </p>
+            <p className="text-[11px] text-[#786B5E] mt-1">
+              Saldo total restante nos cartões
+            </p>
+          </div>
         </div>
 
-        <div className="my-2">
-          <p className="text-2xl font-black text-white tracking-tight">
-            {formatBRL(benefitsWallet.remainingTotal)}
-          </p>
-          <p className="text-[11px] text-slate-400 mt-0.5">
-            Saldo total restante em cartões
-          </p>
-        </div>
-
-        {/* Barras de Consumo VR e VA */}
-        <div className="space-y-1.5 pt-1 text-[10px]">
+        {/* Barras de Consumo de VR e VA */}
+        <div className="space-y-2 pt-2 border-t border-[#E6DEC8]">
           <div>
-            <div className="flex justify-between text-slate-300 mb-0.5">
-              <span>VR: {formatBRL(benefitsWallet.remainingVR)} rest.</span>
-              <span className="text-slate-400">{benefitsWallet.vrUsagePercent.toFixed(0)}% usado</span>
+            <div className="flex justify-between text-[10px] text-[#786B5E] font-medium mb-1">
+              <span>VR: <strong className="text-[#2C221E]">{formatBRL(benefitsWallet.remainingVR)}</strong></span>
+              <span>{benefitsWallet.vrUsagePercent.toFixed(0)}% usado</span>
             </div>
-            <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+            <div className="w-full bg-[#E6DEC8] rounded-full h-1.5 overflow-hidden">
               <div
-                className="bg-amber-400 h-full rounded-full transition-all duration-500"
+                className="bg-[#D99B52] h-full rounded-full transition-all duration-500"
                 style={{ width: `${benefitsWallet.vrUsagePercent}%` }}
               />
             </div>
           </div>
+
           <div>
-            <div className="flex justify-between text-slate-300 mb-0.5">
-              <span>VA: {formatBRL(benefitsWallet.remainingVA)} rest.</span>
-              <span className="text-slate-400">{benefitsWallet.vaUsagePercent.toFixed(0)}% usado</span>
+            <div className="flex justify-between text-[10px] text-[#786B5E] font-medium mb-1">
+              <span>VA: <strong className="text-[#2C221E]">{formatBRL(benefitsWallet.remainingVA)}</strong></span>
+              <span>{benefitsWallet.vaUsagePercent.toFixed(0)}% usado</span>
             </div>
-            <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+            <div className="w-full bg-[#E6DEC8] rounded-full h-1.5 overflow-hidden">
               <div
-                className="bg-orange-400 h-full rounded-full transition-all duration-500"
+                className="bg-[#C2956E] h-full rounded-full transition-all duration-500"
                 style={{ width: `${benefitsWallet.vaUsagePercent}%` }}
               />
             </div>
@@ -119,93 +135,101 @@ export const SummaryCards: React.FC = () => {
         </div>
       </div>
 
-      {/* CARD 3: Total de Entradas (Líquido vs Bruto & Proporção) */}
-      <div className="glass-panel rounded-2xl p-4 relative overflow-hidden border-indigo-500/20 bg-gradient-to-br from-slate-900/90 to-indigo-950/20 shadow-lg">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center border border-indigo-500/30">
-              <ArrowUpRight size={16} />
+      {/* CARD 3: Reserva de Emergência (com Ícone de Plantinha/Broto Sprout) */}
+      <div className="organic-card p-5 relative overflow-hidden flex flex-col justify-between">
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-2xl bg-[#E9EFE4] text-[#7A8B68] flex items-center justify-center border border-[#7A8B68]/30">
+                <Sprout size={20} className="stroke-[2.2]" />
+              </div>
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#786B5E]">
+                  Reserva Casal
+                </span>
+                <p className="text-[10px] text-[#7A8B68] font-semibold">Colchão de Paz</p>
+              </div>
             </div>
-            <div>
-              <span className="text-[11px] font-semibold text-slate-300 uppercase tracking-wider">
-                Entradas do Casal
-              </span>
-              <p className="text-[10px] text-indigo-400 font-medium">Salários + Renda Extra</p>
-            </div>
+
+            <span className="text-[10px] font-bold bg-[#E9EFE4] text-[#556943] px-2 py-0.5 rounded-full">
+              Meta 6 meses
+            </span>
           </div>
-          <span className="text-[10px] font-semibold bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-500/30">
-            Líquido Real
-          </span>
+
+          <div className="my-2">
+            <p className="text-3xl font-extrabold text-[#2C221E] tracking-tight">
+              {formatBRL(emergencyFundMetrics.currentAmount)}
+            </p>
+            <p className="text-[11px] text-[#786B5E] mt-1">
+              Meta ideal: {formatBRL(emergencyFundMetrics.targets.sixMonths)}
+            </p>
+          </div>
         </div>
 
-        <div className="my-2">
-          <p className="text-2xl font-black text-white tracking-tight">
-            {formatBRL(incomeStats.totalNet)}
-          </p>
-          <p className="text-[11px] text-slate-400 mt-0.5">
-            Bruto nominal: <span className="line-through text-slate-500">{formatBRL(incomeStats.totalGross)}</span>
-          </p>
-        </div>
-
-        {/* Proporção de Renda */}
-        <div className="pt-2 border-t border-white/10 space-y-1">
-          <div className="flex justify-between text-[11px] text-slate-300">
-            <span>Lucas ({incomeStats.lucasProportion}%)</span>
-            <span>Mariana ({incomeStats.marianaProportion}%)</span>
+        {/* Barra de Progresso da Plantinha */}
+        <div className="pt-3 mt-2 border-t border-[#E6DEC8] space-y-1.5">
+          <div className="flex justify-between text-[11px] text-[#786B5E]">
+            <span className="font-medium">Progresso da plantinha / reserva:</span>
+            <span className="font-bold text-[#7A8B68]">{emergencyFundMetrics.progressPercent}%</span>
           </div>
-          <div className="w-full bg-slate-800 rounded-full h-1.5 flex overflow-hidden">
+          <div className="w-full bg-[#E6DEC8] rounded-full h-2 overflow-hidden">
             <div
-              className="bg-indigo-500 h-full"
-              style={{ width: `${incomeStats.lucasProportion}%` }}
-              title={`Lucas: ${incomeStats.lucasProportion}%`}
-            />
-            <div
-              className="bg-teal-400 h-full"
-              style={{ width: `${incomeStats.marianaProportion}%` }}
-              title={`Mariana: ${incomeStats.marianaProportion}%`}
+              className="bg-[#7A8B68] h-full rounded-full transition-all duration-700"
+              style={{ width: `${Math.min(100, emergencyFundMetrics.progressPercent)}%` }}
             />
           </div>
         </div>
       </div>
 
-      {/* CARD 4: Comprometimento de Saídas (Fixos + Empréstimos vs Variáveis) */}
-      <div className="glass-panel rounded-2xl p-4 relative overflow-hidden border-rose-500/20 bg-gradient-to-br from-slate-900/90 to-rose-950/20 shadow-lg">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center border border-rose-500/30">
-              <TrendingDown size={16} />
+      {/* CARD 4: Rendas do Casal & Divisão Proporcional */}
+      <div className="organic-card p-5 relative overflow-hidden flex flex-col justify-between">
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-2xl bg-[#8C6D53]/15 text-[#8C6D53] flex items-center justify-center border border-[#8C6D53]/20">
+                <Users size={18} />
+              </div>
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#786B5E]">
+                  Entradas Conjuntas
+                </span>
+                <p className="text-[10px] text-[#8C6D53] font-semibold">Salários + Extras</p>
+              </div>
             </div>
-            <div>
-              <span className="text-[11px] font-semibold text-slate-300 uppercase tracking-wider">
-                Saídas Totais
-              </span>
-              <p className="text-[10px] text-rose-400 font-medium">Comprometimento</p>
-            </div>
+
+            <span className="text-[10px] font-bold bg-[#8C6D53]/15 text-[#5D4734] px-2 py-0.5 rounded-full">
+              Líquido Real
+            </span>
           </div>
-          <span className="text-[10px] font-semibold bg-rose-500/20 text-rose-300 px-2 py-0.5 rounded-full border border-rose-500/30">
-            Mês Atual
-          </span>
+
+          <div className="my-2">
+            <p className="text-3xl font-extrabold text-[#2C221E] tracking-tight">
+              {formatBRL(incomeStats.totalNet)}
+            </p>
+            <p className="text-[11px] text-[#786B5E] mt-1">
+              Bruto nominal: <span className="line-through text-[#786B5E]/60">{formatBRL(incomeStats.totalGross)}</span>
+            </p>
+          </div>
         </div>
 
-        <div className="my-2">
-          <p className="text-2xl font-black text-white tracking-tight">
-            {formatBRL(expenseStats.totalGeneral)}
-          </p>
-          <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
-            <span>Fixos: {formatBRL(expenseStats.totalFixedAndLoans)}</span>
-            <span>•</span>
-            <span>Var: {formatBRL(expenseStats.totalVariable)}</span>
+        {/* Proporções Salariais */}
+        <div className="pt-3 mt-2 border-t border-[#E6DEC8] space-y-1.5">
+          <div className="flex justify-between text-[11px] text-[#786B5E]">
+            <span>Lucas ({incomeStats.lucasProportion}%)</span>
+            <span>Mariana ({incomeStats.marianaProportion}%)</span>
           </div>
-        </div>
-
-        <div className="pt-2 border-t border-white/10 flex items-center justify-between text-[11px]">
-          <span className="text-slate-400 flex items-center gap-1">
-            <CreditCard size={12} className="text-purple-400" />
-            Fatura Crédito:
-          </span>
-          <span className="font-bold text-purple-400">
-            {formatBRL(creditCard.totalInvoiceAmount)}
-          </span>
+          <div className="w-full bg-[#E6DEC8] rounded-full h-2 flex overflow-hidden">
+            <div
+              className="bg-[#7A8B68] h-full transition-all"
+              style={{ width: `${incomeStats.lucasProportion}%` }}
+              title={`Lucas: ${incomeStats.lucasProportion}%`}
+            />
+            <div
+              className="bg-[#C46D53] h-full transition-all"
+              style={{ width: `${incomeStats.marianaProportion}%` }}
+              title={`Mariana: ${incomeStats.marianaProportion}%`}
+            />
+          </div>
         </div>
       </div>
     </div>

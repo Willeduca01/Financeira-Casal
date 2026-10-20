@@ -2,20 +2,17 @@
 
 import React, { useState } from "react";
 import { useFinance } from "@/context/FinanceContext";
-import { formatBRL, formatPercent, formatDateBR, estimateInterestSavings } from "@/lib/utils";
+import { formatBRL, formatPercent, formatDateBR } from "@/lib/utils";
 import { Loan } from "@/types";
 import {
-  Zap,
+  Mountain,
   Flame,
   CheckCircle2,
-  Calendar,
-  CreditCard,
   ArrowRight,
-  TrendingDown,
   Sparkles,
-  Info,
   History,
-  ShieldCheck,
+  TrendingDown,
+  Clock,
 } from "lucide-react";
 import confetti from "canvas-confetti";
 
@@ -38,7 +35,6 @@ export const LoansAvalancheView: React.FC<LoansAvalancheViewProps> = ({
     targetLoan,
     totalDebtBalance,
     totalMonthlyInstallments,
-    suggestedAmortizationAmount,
     estimatedSavingsOnTarget,
   } = avalanche;
 
@@ -53,8 +49,8 @@ export const LoansAvalancheView: React.FC<LoansAvalancheViewProps> = ({
       // Se for a última parcela, comemorar!
       if (loan.paidInstallments + 1 >= loan.totalInstallments) {
         confetti({
-          particleCount: 100,
-          spread: 70,
+          particleCount: 120,
+          spread: 80,
           origin: { y: 0.6 },
         });
       }
@@ -64,36 +60,38 @@ export const LoansAvalancheView: React.FC<LoansAvalancheViewProps> = ({
   return (
     <div className="space-y-5">
       {/* Explicador Estratégico do Método Avalanche */}
-      <div className="glass-panel rounded-2xl p-4 md:p-5 border-amber-500/20 bg-gradient-to-r from-slate-900 via-amber-950/20 to-slate-900">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-500/30 shrink-0">
-              <Zap size={22} className="fill-amber-400" />
+      <div className="organic-card p-5 border-[#E6DEC8] bg-gradient-to-r from-[#FBF9F5] via-[#F4EFE6] to-[#FBF9F5]">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-[#C46D53]/15 text-[#C46D53] flex items-center justify-center border border-[#C46D53]/20 shrink-0">
+              <Mountain size={22} className="stroke-[2.2]" />
             </div>
             <div>
-              <h2 className="text-base md:text-lg font-black text-white flex items-center gap-2">
-                Painel do Método Avalanche
-                <span className="text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full">
-                  Foco na Maior Taxa
+              <div className="flex items-center gap-2">
+                <h2 className="font-serif text-lg font-bold text-[#2C221E]">
+                  Método Avalanche
+                </h2>
+                <span className="text-[10px] font-bold bg-[#C46D53]/15 text-[#C46D53] border border-[#C46D53]/25 px-2.5 py-0.5 rounded-full">
+                  Maior Juro Primeiro
                 </span>
-              </h2>
-              <p className="text-xs text-slate-300">
-                Ordene suas dívidas da taxa mais cara para a mais barata. Destrua o juro mais alto primeiro!
+              </div>
+              <p className="text-xs text-[#786B5E] mt-0.5">
+                Dívidas ordenadas da maior taxa para a menor. Elimine o juro mais caro para economizar mais!
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-4 bg-slate-950/60 border border-white/10 px-3.5 py-2 rounded-xl text-xs">
+          <div className="flex items-center gap-4 bg-[#FBF9F5] border border-[#E6DEC8] px-4 py-2.5 rounded-2xl text-xs shadow-sm">
             <div>
-              <p className="text-[10px] text-slate-400">Dívida Total Ativa</p>
-              <p className="font-bold text-rose-400 text-sm">
+              <p className="text-[10px] text-[#786B5E] font-medium">Dívida Total Ativa</p>
+              <p className="font-serif font-black text-[#C46D53] text-sm">
                 {formatBRL(totalDebtBalance)}
               </p>
             </div>
-            <div className="w-px h-7 bg-white/10" />
+            <div className="w-px h-7 bg-[#E6DEC8]" />
             <div>
-              <p className="text-[10px] text-slate-400">Parcelas / Mês</p>
-              <p className="font-bold text-amber-400 text-sm">
+              <p className="text-[10px] text-[#786B5E] font-medium">Parcelas / Mês</p>
+              <p className="font-serif font-black text-[#2C221E] text-sm">
                 {formatBRL(totalMonthlyInstallments)}
               </p>
             </div>
@@ -101,52 +99,52 @@ export const LoansAvalancheView: React.FC<LoansAvalancheViewProps> = ({
         </div>
       </div>
 
-      {/* Sugestão de Ataque com Sobra do Mês */}
+      {/* Destaque Alvo nº 1 em Terracota */}
       {targetLoan && (
-        <div className="glass-panel rounded-2xl p-4 border-2 border-amber-500/50 bg-gradient-to-br from-amber-950/30 to-slate-900 avalanche-glow">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
-            <div className="space-y-1">
+        <div className="rounded-[28px] p-5 bg-[#C46D53] text-[#FBF9F5] shadow-[0_12px_36px_rgba(196,109,83,0.25)] border border-[#B05B42]">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="space-y-1.5">
               <div className="flex items-center gap-2">
-                <span className="bg-amber-500 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+                <span className="bg-white/20 text-[#FBF9F5] text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider backdrop-blur-sm">
                   🎯 Alvo Prioritário de Ataque
                 </span>
-                <span className="text-xs font-bold text-amber-300">
-                  {targetLoan.name} • Taxa {formatPercent(targetLoan.monthlyInterestRate)} a.m.
+                <span className="text-xs font-semibold text-[#FBF9F5]">
+                  {targetLoan.name} &bull; Taxa {formatPercent(targetLoan.monthlyInterestRate)} a.m.
                 </span>
               </div>
-              <p className="text-xs text-slate-300">
-                Sobra projetada do Pote Único:{" "}
-                <span className="font-bold text-emerald-400">
+              <p className="text-xs text-[#FBF9F5]/90 max-w-xl leading-relaxed">
+                Você tem uma sobra projetada de{" "}
+                <strong className="text-[#FBF9F5] underline decoration-[#FBF9F5]/40 font-extrabold">
                   {formatBRL(freeWallet.projectedSurplus)}
-                </span>
-                . Ao destinar para amortizar este contrato, o casal economiza cerca de{" "}
-                <span className="font-bold text-white underline">
+                </strong>
+                . Destine esse valor para amortizar este contrato e economize cerca de{" "}
+                <strong className="text-[#FBF9F5] font-extrabold">
                   {formatBRL(estimatedSavingsOnTarget)} em juros futuros
-                </span>
+                </strong>
                 !
               </p>
             </div>
 
             <button
               onClick={() => onOpenAmortize(targetLoan.id)}
-              className="w-full md:w-auto px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 transition-transform hover:scale-105 active:scale-95 shrink-0"
+              className="w-full md:w-auto px-5 py-3 bg-[#FBF9F5] hover:bg-[#F4EFE6] text-[#2C221E] font-bold text-xs rounded-full shadow-md flex items-center justify-center gap-2 transition-transform hover:scale-105 active:scale-95 shrink-0"
             >
-              <Sparkles size={14} />
+              <Sparkles size={14} className="text-[#C46D53]" />
               Amortizar Alvo nº 1
-              <ArrowRight size={14} />
+              <ArrowRight size={14} className="text-[#C46D53]" />
             </button>
           </div>
         </div>
       )}
 
-      {/* Lista de Empréstimos Ordenados */}
+      {/* Grid de Empréstimos */}
       <div className="space-y-3">
-        <h3 className="text-sm font-bold text-white flex items-center gap-2 px-1">
-          <Flame size={16} className="text-amber-400" />
-          Fila de Quitação (Ordenada por Taxa Decrescente)
+        <h3 className="font-serif text-sm font-bold text-[#2C221E] flex items-center gap-2 px-1">
+          <Flame size={16} className="text-[#C46D53]" />
+          Fila de Quitação (Taxa de Juros Decrescente)
         </h3>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {sortedLoans.map((loan, idx) => {
             const isTarget = targetLoan?.id === loan.id;
             const isPaidOff = loan.status === "PAID_OFF" || loan.currentBalance <= 0;
@@ -158,12 +156,12 @@ export const LoansAvalancheView: React.FC<LoansAvalancheViewProps> = ({
             return (
               <div
                 key={loan.id}
-                className={`glass-panel rounded-2xl p-4 relative overflow-hidden transition-all flex flex-col justify-between ${
+                className={`organic-card p-5 relative overflow-hidden transition-all flex flex-col justify-between ${
                   isPaidOff
-                    ? "border-emerald-500/40 bg-emerald-950/10 opacity-80"
+                    ? "border-[#7A8B68]/40 bg-[#E9EFE4]/30 opacity-85"
                     : isTarget
-                    ? "border-amber-500/60 bg-gradient-to-b from-amber-950/20 to-slate-900 shadow-xl"
-                    : "border-white/10 hover:border-white/20"
+                    ? "border-2 border-[#C46D53] shadow-[0_12px_36px_rgba(196,109,83,0.12)]"
+                    : "border-[#E6DEC8]"
                 }`}
               >
                 <div>
@@ -172,62 +170,63 @@ export const LoansAvalancheView: React.FC<LoansAvalancheViewProps> = ({
                     <div>
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {isTarget && (
-                          <span className="bg-amber-500 text-slate-950 text-[9px] font-black px-1.5 py-0.5 rounded uppercase">
+                          <span className="bg-[#C46D53] text-[#FBF9F5] text-[9px] font-black px-2 py-0.5 rounded-full uppercase">
                             #1 ALVO
                           </span>
                         )}
                         {isPaidOff ? (
-                          <span className="bg-emerald-500 text-slate-950 text-[9px] font-black px-1.5 py-0.5 rounded uppercase">
+                          <span className="bg-[#7A8B68] text-[#FBF9F5] text-[9px] font-black px-2 py-0.5 rounded-full uppercase">
                             QUITADO 🎉
                           </span>
                         ) : (
-                          <span className="bg-slate-800 text-slate-300 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-white/10">
+                          <span className="bg-[#F4EFE6] text-[#786B5E] text-[10px] font-bold px-2 py-0.5 rounded-full border border-[#E6DEC8]">
                             Posição #{idx + 1}
                           </span>
                         )}
-                        <span className="text-xs font-bold text-amber-400">
+                        <span className="text-xs font-bold text-[#C46D53]">
                           {formatPercent(loan.monthlyInterestRate)} a.m.
                         </span>
                       </div>
-                      <h4 className="font-bold text-base text-white mt-1 leading-snug">
+
+                      <h4 className="font-serif font-bold text-base text-[#2C221E] mt-1.5 leading-snug">
                         {loan.name}
                       </h4>
-                      <p className="text-[11px] text-slate-400">{loan.bank}</p>
+                      <p className="text-[11px] text-[#786B5E]">{loan.bank}</p>
                     </div>
                   </div>
 
                   {/* Saldo Devedor */}
-                  <div className="my-3 p-3 rounded-xl bg-slate-950/60 border border-white/5 space-y-1">
+                  <div className="my-3 p-3.5 rounded-2xl bg-[#F4EFE6] border border-[#E6DEC8] space-y-1">
                     <div className="flex justify-between items-baseline">
-                      <span className="text-[11px] text-slate-400">Saldo Devedor:</span>
-                      <span className="text-lg font-black text-white">
+                      <span className="text-[11px] text-[#786B5E] font-medium">Saldo Devedor:</span>
+                      <span className="font-serif text-lg font-black text-[#2C221E]">
                         {formatBRL(loan.currentBalance)}
                       </span>
                     </div>
-                    <div className="flex justify-between text-[10px] text-slate-400 pt-1 border-t border-white/5">
+                    <div className="flex justify-between text-[10px] text-[#786B5E] pt-1 border-t border-[#E6DEC8]/60">
                       <span>Valor Original: {formatBRL(loan.originalAmount)}</span>
                       <span>Vencimento: dia {loan.dueDay}</span>
                     </div>
                   </div>
 
                   {/* Barra de Progresso de Parcelas */}
-                  <div className="space-y-1 my-2">
-                    <div className="flex justify-between text-[11px] text-slate-300">
+                  <div className="space-y-1.5 my-2">
+                    <div className="flex justify-between text-[11px] text-[#786B5E]">
                       <span>
-                        Parcelas: <strong>{loan.paidInstallments}</strong> de{" "}
-                        <strong>{loan.totalInstallments}</strong>
+                        Parcelas: <strong className="text-[#2C221E]">{loan.paidInstallments}</strong> de{" "}
+                        <strong className="text-[#2C221E]">{loan.totalInstallments}</strong>
                       </span>
-                      <span className="font-semibold text-emerald-400">
+                      <span className="font-bold text-[#7A8B68]">
                         {progress.toFixed(0)}% pago
                       </span>
                     </div>
-                    <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                    <div className="w-full bg-[#E6DEC8] rounded-full h-2 overflow-hidden">
                       <div
-                        className="bg-gradient-to-r from-amber-500 to-emerald-400 h-full rounded-full transition-all duration-500"
+                        className="bg-gradient-to-r from-[#D99B52] to-[#7A8B68] h-full rounded-full transition-all duration-500"
                         style={{ width: `${progress}%` }}
                       />
                     </div>
-                    <div className="flex justify-between text-[10px] text-slate-400">
+                    <div className="flex justify-between text-[10px] text-[#786B5E]">
                       <span>{remainingInstallments} parcelas restantes</span>
                       <span>Parcela: {formatBRL(loan.currentInstallmentAmount)}</span>
                     </div>
@@ -236,27 +235,27 @@ export const LoansAvalancheView: React.FC<LoansAvalancheViewProps> = ({
 
                 {/* Ações */}
                 {!isPaidOff && (
-                  <div className="grid grid-cols-2 gap-2 pt-3 mt-2 border-t border-white/10">
+                  <div className="grid grid-cols-2 gap-2 pt-3 mt-2 border-t border-[#E6DEC8]">
                     <button
                       onClick={() => handlePayInstallment(loan)}
                       disabled={payingLoanId === loan.id}
-                      className="px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium flex items-center justify-center gap-1 transition-colors"
+                      className="px-3 py-2 rounded-full bg-[#F4EFE6] hover:bg-[#E6DEC8] text-[#2C221E] text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors border border-[#E6DEC8]"
                       title="Registrar pagamento da parcela do mês"
                     >
-                      <CheckCircle2 size={13} className="text-emerald-400" />
+                      <CheckCircle2 size={13} className="text-[#7A8B68]" />
                       Pagar Parcela
                     </button>
 
                     <button
                       onClick={() => onOpenAmortize(loan.id)}
-                      className={`px-2.5 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all ${
+                      className={`px-3 py-2 rounded-full text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm ${
                         isTarget
-                          ? "bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md shadow-amber-500/20"
-                          : "bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/40"
+                          ? "bg-[#C46D53] hover:bg-[#B05B42] text-[#FBF9F5]"
+                          : "bg-[#7A8B68] hover:bg-[#657554] text-[#FBF9F5]"
                       }`}
                       title="Adiantar parcelas com abatimento de juros"
                     >
-                      <Zap size={13} />
+                      <Sparkles size={13} />
                       Amortizar
                     </button>
                   </div>
@@ -267,11 +266,11 @@ export const LoansAvalancheView: React.FC<LoansAvalancheViewProps> = ({
         </div>
       </div>
 
-      {/* Histórico de Amortizações Realizadas */}
-      <div className="glass-panel rounded-2xl p-4 md:p-5 space-y-3">
-        <h3 className="text-sm font-bold text-white flex items-center gap-2">
-          <History size={16} className="text-emerald-400" />
-          Histórico de Amortizações & Descontos de Juros Conquistados
+      {/* Histórico de Amortizações */}
+      <div className="organic-card p-5 space-y-3.5">
+        <h3 className="font-serif text-sm font-bold text-[#2C221E] flex items-center gap-2">
+          <History size={16} className="text-[#7A8B68]" />
+          Histórico de Amortizações & Descontos Conquistados
         </h3>
 
         {amortizations.length > 0 ? (
@@ -281,34 +280,34 @@ export const LoansAvalancheView: React.FC<LoansAvalancheViewProps> = ({
               return (
                 <div
                   key={amort.id}
-                  className="bg-slate-950/60 border border-white/10 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+                  className="bg-[#F4EFE6] border border-[#E6DEC8] rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
                 >
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-white">
+                      <span className="text-xs font-bold text-[#2C221E]">
                         {loan?.name || "Empréstimo"}
                       </span>
-                      <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded">
+                      <span className="text-[10px] bg-[#E9EFE4] text-[#556943] border border-[#7A8B68]/30 px-2 py-0.5 rounded-full font-semibold">
                         {amort.abatementType === "REDUCE_TERM"
                           ? `Prazo reduzido em ${amort.installmentsReduced} parcelas`
                           : "Parcela mensal reduzida"}
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-400">
-                      Realizado em {formatDateBR(amort.date)} • {amort.notes || "Amortização extraordinária"}
+                    <p className="text-[11px] text-[#786B5E]">
+                      Realizado em {formatDateBR(amort.date)} &bull; {amort.notes || "Amortização extraordinária"}
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-4 text-xs">
+                  <div className="flex items-center gap-5 text-xs">
                     <div>
-                      <p className="text-[10px] text-slate-400">Valor Pago</p>
-                      <p className="font-bold text-white">{formatBRL(amort.amountPaid)}</p>
+                      <p className="text-[10px] text-[#786B5E]">Valor Pago</p>
+                      <p className="font-serif font-black text-[#2C221E]">{formatBRL(amort.amountPaid)}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] text-emerald-400 font-semibold">
+                      <p className="text-[10px] text-[#7A8B68] font-semibold">
                         Juros Economizados
                       </p>
-                      <p className="font-bold text-emerald-400">
+                      <p className="font-serif font-black text-[#7A8B68]">
                         +{formatBRL(amort.interestDiscount)}
                       </p>
                     </div>
@@ -318,8 +317,8 @@ export const LoansAvalancheView: React.FC<LoansAvalancheViewProps> = ({
             })}
           </div>
         ) : (
-          <p className="text-xs text-slate-400 text-center py-4">
-            Nenhuma amortização realizada ainda. Use a sobra do mês para abater a primeira!
+          <p className="text-xs text-[#786B5E] text-center py-4">
+            Nenhuma amortização realizada ainda. Use a sobra do mês para dar o primeiro passo!
           </p>
         )}
       </div>

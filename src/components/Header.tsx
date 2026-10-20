@@ -4,14 +4,19 @@ import React, { useState } from "react";
 import { useFinance } from "@/context/FinanceContext";
 import { formatBRL } from "@/lib/utils";
 import {
-  Users,
   ChevronLeft,
   ChevronRight,
-  Sparkles,
   RotateCcw,
-  ShieldCheck,
   Check,
+  Heart,
+  Calendar,
+  Sparkles,
+  Menu,
 } from "lucide-react";
+
+interface HeaderProps {
+  onOpenMobileMenu?: () => void;
+}
 
 const MONTH_NAMES = [
   "Janeiro",
@@ -28,7 +33,7 @@ const MONTH_NAMES = [
   "Dezembro",
 ];
 
-export const Header: React.FC = () => {
+export const Header: React.FC<HeaderProps> = ({ onOpenMobileMenu }) => {
   const {
     currentUser,
     switchUser,
@@ -37,7 +42,6 @@ export const Header: React.FC = () => {
     selectedYear,
     setSelectedMonth,
     setSelectedYear,
-    freeWallet,
     resetAllData,
   } = useFinance();
 
@@ -63,144 +67,189 @@ export const Header: React.FC = () => {
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full glass-panel border-b border-white/10 px-4 py-3">
-      <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
-        {/* Logo & Marca */}
-        <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-500 to-indigo-500 flex items-center justify-center shadow-lg shadow-emerald-500/20 text-white font-bold text-lg">
-            ⚡
-          </div>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <h1 className="font-bold text-base md:text-lg text-white leading-tight">
-                Casal Avalanche
-              </h1>
-              <span className="hidden sm:inline-flex text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                Pote Único
+    <header className="w-full bg-[#C46D53] text-[#FBF9F5] rounded-b-[36px] shadow-lg shadow-[#C46D53]/15 pt-5 pb-12 px-4 relative z-20 transition-all">
+      <div className="max-w-6xl mx-auto space-y-4">
+        {/* Linha Superior: Ícone Decorativo, Título Central e Avatares Sobrepostos */}
+        <div className="flex items-center justify-between gap-3">
+          {/* Lado Esquerdo: Menu Mobile ou Ícone Afetuoso */}
+          <div className="flex items-center gap-2">
+            {onOpenMobileMenu && (
+              <button
+                type="button"
+                onClick={onOpenMobileMenu}
+                className="md:hidden p-2 rounded-2xl bg-white/15 hover:bg-white/25 text-[#FBF9F5] transition-all backdrop-blur-sm border border-white/20 active:scale-95"
+                aria-label="Abrir menu de navegação"
+                title="Menu"
+              >
+                <Menu size={20} />
+              </button>
+            )}
+            <div className="w-9 h-9 rounded-2xl bg-white/15 backdrop-blur-sm hidden sm:flex items-center justify-center text-[#FBF9F5] shadow-inner">
+              <Heart size={18} className="fill-[#FBF9F5]/80 text-[#FBF9F5]" />
+            </div>
+            <div className="hidden sm:block">
+              <span className="text-[10px] tracking-wider uppercase font-semibold text-[#FBF9F5]/75 block leading-none">
+                Finanças a Dois
+              </span>
+              <span className="text-xs font-serif font-bold text-[#FBF9F5]">
+                Lucas & Mariana
               </span>
             </div>
-            <p className="text-[11px] text-slate-400">
-              Lucas & Mariana • Quitação Acelerada
-            </p>
+          </div>
+
+          {/* Centro: Título com Tipografia Serifada Acolhedora */}
+          <div className="text-center">
+            <h1 className="font-serif text-xl sm:text-2xl font-black tracking-tight text-[#FBF9F5]">
+              Casal Avalanche
+            </h1>
+            <div className="inline-flex items-center gap-1.5 mt-0.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#FBF9F5]/60 animate-pulse" />
+              <span className="text-[11px] font-medium tracking-wide text-[#FBF9F5]/90">
+                Pote Único &bull; Quitação Acelerada
+              </span>
+            </div>
+          </div>
+
+          {/* Lado Direito: Avatares do Casal Sobrepostos (-space-x-2) */}
+          <div className="relative">
+            <button
+              onClick={() => setShowUserDropdown(!showUserDropdown)}
+              className="flex items-center -space-x-2.5 p-1 bg-white/15 hover:bg-white/25 rounded-full transition-all backdrop-blur-sm border border-white/20 shadow-sm group"
+              title="Alternar usuário do casal"
+              aria-label="Alternar perfil ativo"
+            >
+              {users.map((u) => {
+                const isActive = u.id === currentUser.id;
+                return (
+                  <div key={u.id} className="relative">
+                    <img
+                      src={u.avatar}
+                      alt={u.name}
+                      className={`w-8 h-8 rounded-full object-cover ring-2 transition-transform ${
+                        isActive
+                          ? "ring-[#FBF9F5] scale-105 z-10 shadow-md"
+                          : "ring-[#C46D53] opacity-85 hover:opacity-100"
+                      }`}
+                    />
+                    {isActive && (
+                      <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-[#7A8B68] rounded-full ring-2 ring-[#FBF9F5]" />
+                    )}
+                  </div>
+                );
+              })}
+            </button>
+
+            {/* Dropdown de Alternância de Perfil */}
+            {showUserDropdown && (
+              <div className="absolute right-0 mt-2.5 w-60 bg-[#FBF9F5] border border-[#E6DEC8] rounded-[24px] p-2.5 shadow-[0_12px_40px_rgba(61,44,30,0.15)] z-50 text-[#2C221E] animate-in fade-in zoom-in-95 duration-150">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#786B5E] px-2.5 py-1">
+                  Quem está usando agora?
+                </p>
+
+                <div className="space-y-1 mt-1">
+                  {users.map((user) => {
+                    const isSelected = user.id === currentUser.id;
+                    return (
+                      <button
+                        key={user.id}
+                        onClick={() => {
+                          switchUser(user.id);
+                          setShowUserDropdown(false);
+                        }}
+                        className={`w-full flex items-center justify-between p-2 rounded-2xl text-left transition-all ${
+                          isSelected
+                            ? "bg-[#C46D53]/10 text-[#C46D53] font-bold border border-[#C46D53]/30"
+                            : "hover:bg-[#F4EFE6] text-[#2C221E]"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <img
+                            src={user.avatar}
+                            alt={user.name}
+                            className="w-8 h-8 rounded-full object-cover ring-1 ring-[#E6DEC8]"
+                          />
+                          <div>
+                            <p className="text-xs font-bold leading-tight">
+                              {user.name}
+                            </p>
+                            <p className="text-[10px] text-[#786B5E]">
+                              Líquido: {formatBRL(user.salaryNet)}
+                            </p>
+                          </div>
+                        </div>
+                        {isSelected && (
+                          <div className="w-5 h-5 rounded-full bg-[#C46D53] text-[#FBF9F5] flex items-center justify-center">
+                            <Check size={12} strokeWidth={3} />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="border-t border-[#E6DEC8] mt-2 pt-2">
+                  <button
+                    onClick={() => {
+                      setShowUserDropdown(false);
+                      setShowConfirmReset(true);
+                    }}
+                    className="w-full flex items-center gap-2 p-1.5 px-2 rounded-xl text-[11px] text-[#B05B42] hover:bg-[#C46D53]/10 transition-colors font-medium"
+                  >
+                    <RotateCcw size={12} />
+                    Restaurar dados de teste
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Seletor de Mês/Ano */}
-        <div className="flex items-center bg-slate-900/90 border border-white/10 rounded-xl px-2 py-1 shadow-inner">
-          <button
-            onClick={handlePrevMonth}
-            className="p-1 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
-            title="Mês anterior"
-            aria-label="Mês anterior"
-          >
-            <ChevronLeft size={16} />
-          </button>
-          <span className="px-2 text-xs md:text-sm font-semibold text-slate-200 min-w-[100px] text-center">
-            {MONTH_NAMES[selectedMonth]} {selectedYear}
-          </span>
-          <button
-            onClick={handleNextMonth}
-            className="p-1 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
-            title="Próximo mês"
-            aria-label="Próximo mês"
-          >
-            <ChevronRight size={16} />
-          </button>
-        </div>
-
-        {/* Seletor de Perfil do Casal (Alternador Rápido) */}
-        <div className="relative">
-          <button
-            onClick={() => setShowUserDropdown(!showUserDropdown)}
-            className="flex items-center gap-2 bg-slate-900/90 border border-white/10 hover:border-indigo-500/40 rounded-xl p-1.5 pr-2.5 transition-all shadow-md group"
-            title="Alternar entre Lucas e Mariana"
-          >
-            <img
-              src={currentUser.avatar}
-              alt={currentUser.name}
-              className="w-7 h-7 rounded-lg object-cover ring-2 ring-indigo-500/50"
-            />
-            <div className="text-left hidden sm:block">
-              <p className="text-[10px] text-slate-400 leading-none">Logado como</p>
-              <p className="text-xs font-semibold text-white leading-tight">
-                {currentUser.name.split(" ")[0]}
-              </p>
+        {/* Linha Inferior: Seletor de Mês como Pílula Translúcida */}
+        <div className="flex items-center justify-center pt-1">
+          <div className="flex items-center bg-white/15 backdrop-blur-md rounded-full px-2 py-1 shadow-sm border border-white/20">
+            <button
+              onClick={handlePrevMonth}
+              className="p-1 hover:bg-white/20 rounded-full text-[#FBF9F5] transition-colors"
+              title="Mês anterior"
+              aria-label="Mês anterior"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <div className="flex items-center gap-1.5 px-3 py-0.5 text-xs sm:text-sm font-semibold tracking-wide text-[#FBF9F5] min-w-[130px] justify-center">
+              <Calendar size={13} className="text-[#FBF9F5]/80" />
+              <span>
+                {MONTH_NAMES[selectedMonth]} {selectedYear}
+              </span>
             </div>
-            <Users size={14} className="text-slate-400 group-hover:text-indigo-400" />
-          </button>
-
-          {/* Dropdown de Usuário */}
-          {showUserDropdown && (
-            <div className="absolute right-0 mt-2 w-56 bg-slate-900 border border-white/15 rounded-2xl p-2 shadow-2xl z-50 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150">
-              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-2 py-1">
-                Quem está usando agora?
-              </p>
-              {users.map((user) => {
-                const isSelected = user.id === currentUser.id;
-                return (
-                  <button
-                    key={user.id}
-                    onClick={() => {
-                      switchUser(user.id);
-                      setShowUserDropdown(false);
-                    }}
-                    className={`w-full flex items-center justify-between p-2 rounded-xl text-left transition-all ${
-                      isSelected
-                        ? "bg-indigo-600/30 border border-indigo-500/40 text-white"
-                        : "hover:bg-white/5 text-slate-300"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <img
-                        src={user.avatar}
-                        alt={user.name}
-                        className="w-7 h-7 rounded-lg object-cover"
-                      />
-                      <div>
-                        <p className="text-xs font-medium text-white">{user.name}</p>
-                        <p className="text-[10px] text-slate-400">
-                          Líquido: {formatBRL(user.salaryNet)}
-                        </p>
-                      </div>
-                    </div>
-                    {isSelected && <Check size={14} className="text-indigo-400" />}
-                  </button>
-                );
-              })}
-
-              <div className="border-t border-white/10 mt-2 pt-2">
-                <button
-                  onClick={() => {
-                    setShowUserDropdown(false);
-                    setShowConfirmReset(true);
-                  }}
-                  className="w-full flex items-center gap-2 p-1.5 px-2 rounded-lg text-[11px] text-rose-400 hover:bg-rose-500/10 transition-colors"
-                >
-                  <RotateCcw size={12} />
-                  Restaurar dados de teste
-                </button>
-              </div>
-            </div>
-          )}
+            <button
+              onClick={handleNextMonth}
+              className="p-1 hover:bg-white/20 rounded-full text-[#FBF9F5] transition-colors"
+              title="Próximo mês"
+              aria-label="Próximo mês"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Modal de Confirmação de Reset */}
+      {/* Modal de Confirmação de Reset com Tema Aconchegante */}
       {showConfirmReset && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-white/15 rounded-2xl max-w-sm w-full p-5 space-y-4">
-            <h3 className="text-base font-bold text-white flex items-center gap-2">
-              <RotateCcw size={18} className="text-rose-400" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-[#FBF9F5] border border-[#E6DEC8] rounded-[28px] max-w-sm w-full p-6 space-y-4 shadow-2xl text-[#2C221E] animate-in zoom-in-95 duration-150">
+            <div className="w-10 h-10 rounded-2xl bg-[#C46D53]/15 text-[#C46D53] flex items-center justify-center">
+              <RotateCcw size={20} />
+            </div>
+            <h3 className="font-serif text-lg font-bold text-[#2C221E]">
               Restaurar dados iniciais?
             </h3>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Isso recarregará os dados mockados originais do casal Lucas & Mariana com todos
-              os empréstimos e despesas de exemplo.
+            <p className="text-xs text-[#786B5E] leading-relaxed">
+              Isso recarregará os dados originais do casal Lucas & Mariana com todos os empréstimos e contas demonstrativas.
             </p>
             <div className="flex gap-2 justify-end pt-2">
               <button
                 onClick={() => setShowConfirmReset(false)}
-                className="px-3 py-1.5 rounded-xl text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700"
+                className="px-4 py-2 rounded-full text-xs font-semibold bg-[#F4EFE6] text-[#786B5E] hover:bg-[#E6DEC8] transition-colors"
               >
                 Cancelar
               </button>
@@ -209,7 +258,7 @@ export const Header: React.FC = () => {
                   resetAllData();
                   setShowConfirmReset(false);
                 }}
-                className="px-3 py-1.5 rounded-xl text-xs font-medium bg-rose-600 hover:bg-rose-500 text-white"
+                className="px-4 py-2 rounded-full text-xs font-bold bg-[#C46D53] hover:bg-[#B05B42] text-[#FBF9F5] shadow-md transition-all"
               >
                 Sim, restaurar
               </button>

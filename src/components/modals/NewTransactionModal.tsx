@@ -106,17 +106,17 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm p-0 sm:p-4">
-      <div className="bg-slate-900 border border-white/15 rounded-t-3xl sm:rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-5 space-y-4 animate-in slide-in-from-bottom duration-200">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4">
+      <div className="bg-[#FBF9F5] border border-[#E6DEC8] rounded-t-[32px] sm:rounded-[28px] w-full max-w-lg max-h-[90vh] overflow-y-auto p-5 sm:p-6 space-y-4 shadow-[0_16px_50px_rgb(61,44,30,0.18)] animate-in slide-in-from-bottom duration-200">
         {/* Cabeçalho */}
-        <div className="flex items-center justify-between pb-3 border-b border-white/10">
+        <div className="flex items-center justify-between pb-3 border-b border-[#E6DEC8]">
           <div className="flex items-center gap-2">
             <button
               onClick={() => setActiveTab("expense")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+              className={`px-3.5 py-2 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${
                 activeTab === "expense"
-                  ? "bg-rose-500 text-white shadow-md shadow-rose-500/20"
-                  : "text-slate-400 hover:text-white"
+                  ? "bg-[#C46D53] text-[#FBF9F5] shadow-sm shadow-[#C46D53]/30"
+                  : "text-[#786B5E] hover:text-[#2C221E] hover:bg-[#F4EFE6]"
               }`}
             >
               <ArrowDownLeft size={14} />
@@ -124,10 +124,10 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
             </button>
             <button
               onClick={() => setActiveTab("income")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+              className={`px-3.5 py-2 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${
                 activeTab === "income"
-                  ? "bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20"
-                  : "text-slate-400 hover:text-white"
+                  ? "bg-[#7A8B68] text-[#FBF9F5] shadow-sm shadow-[#7A8B68]/30"
+                  : "text-[#786B5E] hover:text-[#2C221E] hover:bg-[#F4EFE6]"
               }`}
             >
               <ArrowUpRight size={14} />
@@ -137,31 +137,31 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white rounded-xl hover:bg-white/10"
+            className="p-1.5 text-[#786B5E] hover:text-[#2C221E] rounded-xl hover:bg-[#F4EFE6] transition-colors"
           >
             <X size={18} />
           </button>
         </div>
 
         {/* Quem está realizando o gasto / entrada? */}
-        <div className="bg-slate-950/60 p-2.5 rounded-xl border border-white/5 flex items-center justify-between">
-          <span className="text-xs text-slate-400 font-medium">Responsável:</span>
+        <div className="bg-[#F4EFE6] p-2.5 rounded-2xl border border-[#E6DEC8] flex items-center justify-between">
+          <span className="text-xs text-[#786B5E] font-medium">Responsável:</span>
           <div className="flex gap-2">
             {users.map((u) => (
               <button
                 key={u.id}
                 type="button"
                 onClick={() => setSelectedUserId(u.id)}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all ${
                   selectedUserId === u.id
-                    ? "bg-indigo-600 text-white ring-2 ring-indigo-400/50"
-                    : "text-slate-400 hover:bg-white/5"
+                    ? "bg-[#C46D53] text-[#FBF9F5] shadow-sm ring-2 ring-[#C46D53]/30"
+                    : "text-[#786B5E] hover:bg-[#E6DEC8]/50"
                 }`}
               >
                 <img
                   src={u.avatar}
                   alt={u.name}
-                  className="w-4 h-4 rounded-full object-cover"
+                  className="w-4 h-4 rounded-full object-cover border border-[#FBF9F5]"
                 />
                 {u.name.split(" ")[0]}
               </button>
@@ -174,7 +174,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
           <form onSubmit={handleExpenseSubmit} className="space-y-4">
             {/* Atalhos Rápidos para mobile */}
             <div>
-              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+              <p className="text-[11px] font-bold text-[#786B5E] uppercase tracking-wider mb-1.5">
                 ⚡ Lançamento Rápido em 1 clique
               </p>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
@@ -187,7 +187,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
                       method: "VA",
                     })
                   }
-                  className="p-1.5 text-[11px] bg-slate-800/80 hover:bg-slate-700 text-slate-200 rounded-lg text-left border border-white/5 truncate"
+                  className="p-2 text-[11px] bg-[#F4EFE6] hover:bg-[#E6DEC8]/70 text-[#2C221E] rounded-xl text-left border border-[#E6DEC8] truncate font-medium transition-colors"
                 >
                   🛒 Mercado (VA)
                 </button>
@@ -200,7 +200,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
                       method: "VA",
                     })
                   }
-                  className="p-1.5 text-[11px] bg-slate-800/80 hover:bg-slate-700 text-slate-200 rounded-lg text-left border border-white/5 truncate"
+                  className="p-2 text-[11px] bg-[#F4EFE6] hover:bg-[#E6DEC8]/70 text-[#2C221E] rounded-xl text-left border border-[#E6DEC8] truncate font-medium transition-colors"
                 >
                   🥩 Mistura (VA)
                 </button>
@@ -213,7 +213,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
                       method: "VR",
                     })
                   }
-                  className="p-1.5 text-[11px] bg-slate-800/80 hover:bg-slate-700 text-slate-200 rounded-lg text-left border border-white/5 truncate"
+                  className="p-2 text-[11px] bg-[#F4EFE6] hover:bg-[#E6DEC8]/70 text-[#2C221E] rounded-xl text-left border border-[#E6DEC8] truncate font-medium transition-colors"
                 >
                   🥐 Padaria/Doces (VR)
                 </button>
@@ -226,7 +226,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
                       method: "VR",
                     })
                   }
-                  className="p-1.5 text-[11px] bg-slate-800/80 hover:bg-slate-700 text-slate-200 rounded-lg text-left border border-white/5 truncate"
+                  className="p-2 text-[11px] bg-[#F4EFE6] hover:bg-[#E6DEC8]/70 text-[#2C221E] rounded-xl text-left border border-[#E6DEC8] truncate font-medium transition-colors"
                 >
                   🍽️ Comer Fora (VR)
                 </button>
@@ -239,7 +239,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
                       method: "DEBIT_PIX",
                     })
                   }
-                  className="p-1.5 text-[11px] bg-slate-800/80 hover:bg-slate-700 text-slate-200 rounded-lg text-left border border-white/5 truncate"
+                  className="p-2 text-[11px] bg-[#F4EFE6] hover:bg-[#E6DEC8]/70 text-[#2C221E] rounded-xl text-left border border-[#E6DEC8] truncate font-medium transition-colors"
                 >
                   💊 Farmácia (Pix)
                 </button>
@@ -252,7 +252,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
                       method: "CREDIT_CARD",
                     })
                   }
-                  className="p-1.5 text-[11px] bg-slate-800/80 hover:bg-slate-700 text-slate-200 rounded-lg text-left border border-white/5 truncate"
+                  className="p-2 text-[11px] bg-[#F4EFE6] hover:bg-[#E6DEC8]/70 text-[#2C221E] rounded-xl text-left border border-[#E6DEC8] truncate font-medium transition-colors"
                 >
                   ⛽ Combustível (Crédito)
                 </button>
@@ -261,7 +261,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
 
             {/* Valor */}
             <div>
-              <label className="text-xs text-slate-400 block mb-1">Valor (R$)</label>
+              <label className="text-xs text-[#786B5E] font-medium block mb-1">Valor (R$)</label>
               <input
                 type="text"
                 placeholder="0,00"
@@ -269,26 +269,26 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
                 onChange={(e) => setAmount(e.target.value)}
                 required
                 autoFocus
-                className="w-full bg-slate-950 border border-white/15 rounded-xl px-4 py-2.5 text-xl font-black text-white placeholder-slate-600 focus:outline-none focus:border-rose-500"
+                className="w-full bg-[#F4EFE6] border border-[#E6DEC8] rounded-2xl px-4 py-2.5 text-2xl font-black text-[#2C221E] placeholder-[#786B5E]/40 focus:outline-none focus:border-[#C46D53] focus:ring-2 focus:ring-[#C46D53]/15 transition-all"
               />
             </div>
 
             {/* Descrição */}
             <div>
-              <label className="text-xs text-slate-400 block mb-1">Descrição</label>
+              <label className="text-xs text-[#786B5E] font-medium block mb-1">Descrição</label>
               <input
                 type="text"
                 placeholder="Ex: Mercado semanal, açougue, farmácia..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 required
-                className="w-full bg-slate-950 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-rose-500"
+                className="w-full bg-[#F4EFE6] border border-[#E6DEC8] rounded-2xl px-3.5 py-2.5 text-xs text-[#2C221E] placeholder-[#786B5E]/50 focus:outline-none focus:border-[#C46D53] focus:ring-2 focus:ring-[#C46D53]/15 transition-all"
               />
             </div>
 
             {/* Meio de Pagamento & Carteira */}
             <div>
-              <label className="text-xs text-slate-400 block mb-1.5">
+              <label className="text-xs text-[#786B5E] font-medium block mb-1.5">
                 Meio de Pagamento (Define a Carteira)
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -300,14 +300,14 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
                       key={method}
                       type="button"
                       onClick={() => setPaymentMethod(method)}
-                      className={`p-2 rounded-xl text-left border text-xs font-medium transition-all ${
+                      className={`p-2.5 rounded-2xl text-left border text-xs transition-all ${
                         isSelected
-                          ? "bg-slate-800 border-white/30 text-white shadow-md ring-1 ring-white/20"
-                          : "border-white/5 text-slate-400 hover:bg-white/5"
+                          ? "bg-[#C46D53]/12 border-[#C46D53] text-[#2C221E] shadow-sm ring-1 ring-[#C46D53]"
+                          : "bg-[#F4EFE6] border-[#E6DEC8] text-[#786B5E] hover:bg-[#E6DEC8]/50"
                       }`}
                     >
-                      <p className="font-bold">{details.label}</p>
-                      <p className="text-[10px] text-slate-500">{details.walletName}</p>
+                      <p className="font-bold text-[#2C221E]">{details.label}</p>
+                      <p className="text-[10px] text-[#786B5E]">{details.walletName}</p>
                     </button>
                   );
                 })}
@@ -317,11 +317,11 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
             {/* Tipo: Fixo ou Variável */}
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-xs text-slate-400 block mb-1">Tipo de Despesa</label>
+                <label className="text-xs text-[#786B5E] font-medium block mb-1">Tipo de Despesa</label>
                 <select
                   value={expenseType}
                   onChange={(e) => setExpenseType(e.target.value as ExpenseType)}
-                  className="w-full bg-slate-950 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-rose-500"
+                  className="w-full bg-[#F4EFE6] border border-[#E6DEC8] rounded-2xl px-3 py-2.5 text-xs text-[#2C221E] focus:outline-none focus:border-[#C46D53] focus:ring-2 focus:ring-[#C46D53]/15 transition-all"
                 >
                   <option value="VARIABLE">Variável (Dia a dia)</option>
                   <option value="FIXED">Fixo (Contas mensais)</option>
@@ -330,11 +330,11 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
               </div>
 
               <div>
-                <label className="text-xs text-slate-400 block mb-1">Categoria</label>
+                <label className="text-xs text-[#786B5E] font-medium block mb-1">Categoria</label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value as ExpenseCategory)}
-                  className="w-full bg-slate-950 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-rose-500"
+                  className="w-full bg-[#F4EFE6] border border-[#E6DEC8] rounded-2xl px-3 py-2.5 text-xs text-[#2C221E] focus:outline-none focus:border-[#C46D53] focus:ring-2 focus:ring-[#C46D53]/15 transition-all"
                 >
                   {(Object.keys(CATEGORY_DETAILS) as ExpenseCategory[]).map((cat) => (
                     <option key={cat} value={cat}>
@@ -347,7 +347,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
 
             <button
               type="submit"
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 text-white font-bold text-sm shadow-lg shadow-rose-500/25 transition-transform active:scale-95"
+              className="w-full py-3.5 rounded-full bg-[#C46D53] hover:bg-[#B05B42] text-[#FBF9F5] font-bold text-sm shadow-md shadow-[#C46D53]/25 transition-transform active:scale-[0.98]"
             >
               Confirmar Despesa
             </button>
@@ -356,7 +356,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
           /* FORMULÁRIO 2: RECEITA */
           <form onSubmit={handleIncomeSubmit} className="space-y-4">
             <div>
-              <label className="text-xs text-slate-400 block mb-1">Categoria de Receita</label>
+              <label className="text-xs text-[#786B5E] font-medium block mb-1">Categoria de Receita</label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {[
                   { id: "SALARY" as IncomeCategory, label: "Salário" },
@@ -370,10 +370,10 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
                     key={item.id}
                     type="button"
                     onClick={() => setIncomeCategory(item.id)}
-                    className={`p-2 rounded-xl text-xs font-semibold border text-center transition-all ${
+                    className={`p-2.5 rounded-2xl text-xs font-semibold border text-center transition-all ${
                       incomeCategory === item.id
-                        ? "bg-emerald-600/30 border-emerald-500/50 text-emerald-300"
-                        : "border-white/5 text-slate-400 hover:bg-white/5"
+                        ? "bg-[#7A8B68]/20 border-[#7A8B68] text-[#2C221E] ring-1 ring-[#7A8B68] font-bold"
+                        : "bg-[#F4EFE6] border-[#E6DEC8] text-[#786B5E] hover:bg-[#E6DEC8]/50"
                     }`}
                   >
                     {item.label}
@@ -383,7 +383,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
             </div>
 
             <div>
-              <label className="text-xs text-slate-400 block mb-1">
+              <label className="text-xs text-[#786B5E] font-medium block mb-1">
                 Valor Líquido (R$ - Cai na Carteira)
               </label>
               <input
@@ -393,13 +393,13 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
                 onChange={(e) => setIncomeAmountNet(e.target.value)}
                 required
                 autoFocus
-                className="w-full bg-slate-950 border border-white/15 rounded-xl px-4 py-2.5 text-xl font-black text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500"
+                className="w-full bg-[#F4EFE6] border border-[#E6DEC8] rounded-2xl px-4 py-2.5 text-2xl font-black text-[#2C221E] placeholder-[#786B5E]/40 focus:outline-none focus:border-[#7A8B68] focus:ring-2 focus:ring-[#7A8B68]/15 transition-all"
               />
             </div>
 
             {incomeCategory === "SALARY" && (
               <div>
-                <label className="text-xs text-slate-400 block mb-1">
+                <label className="text-xs text-[#786B5E] font-medium block mb-1">
                   Valor Bruto (R$ - Apenas para Histórico/Estatística)
                 </label>
                 <input
@@ -407,26 +407,26 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
                   placeholder="Ex: 7500,00"
                   value={incomeAmountGross}
                   onChange={(e) => setIncomeAmountGross(e.target.value)}
-                  className="w-full bg-slate-950 border border-white/15 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-[#F4EFE6] border border-[#E6DEC8] rounded-2xl px-3.5 py-2.5 text-xs text-[#2C221E] placeholder-[#786B5E]/50 focus:outline-none focus:border-[#7A8B68] focus:ring-2 focus:ring-[#7A8B68]/15 transition-all"
                 />
               </div>
             )}
 
             <div>
-              <label className="text-xs text-slate-400 block mb-1">Descrição</label>
+              <label className="text-xs text-[#786B5E] font-medium block mb-1">Descrição</label>
               <input
                 type="text"
                 placeholder="Ex: Salário mensal, freelance, vale refeição..."
                 value={incomeDescription}
                 onChange={(e) => setIncomeDescription(e.target.value)}
                 required
-                className="w-full bg-slate-950 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                className="w-full bg-[#F4EFE6] border border-[#E6DEC8] rounded-2xl px-3.5 py-2.5 text-xs text-[#2C221E] placeholder-[#786B5E]/50 focus:outline-none focus:border-[#7A8B68] focus:ring-2 focus:ring-[#7A8B68]/15 transition-all"
               />
             </div>
 
             <button
               type="submit"
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-sm shadow-lg shadow-emerald-500/25 transition-transform active:scale-95"
+              className="w-full py-3.5 rounded-full bg-[#7A8B68] hover:bg-[#657554] text-[#FBF9F5] font-bold text-sm shadow-md shadow-[#7A8B68]/25 transition-transform active:scale-[0.98]"
             >
               Confirmar Receita
             </button>

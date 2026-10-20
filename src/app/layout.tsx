@@ -1,14 +1,27 @@
 import type { Metadata, Viewport } from "next";
+import { Plus_Jakarta_Sans, Fraunces } from "next/font/google";
 import "./globals.css";
 
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
+
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-serif",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
-  title: "Casal Avalanche • Gestão Financeira Inteligente",
+  title: "Casal Avalanche • Gestão Financeira Natural & Aconchegante",
   description:
     "Gestão Financeira para Casal com Pote Único, Carteiras Separadas (Livre vs Benefícios VR/VA) e foco em quitação acelerada de empréstimos pelo Método Avalanche.",
   applicationName: "Casal Avalanche",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "default",
     title: "Casal Avalanche",
   },
   formatDetection: {
@@ -17,7 +30,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#090d16",
+  themeColor: "#C46D53",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -30,11 +43,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" className="dark">
+    <html lang="pt-BR" className={`${plusJakartaSans.variable} ${fraunces.variable}`}>
       <head>
         <link rel="manifest" href="/manifest.json" />
       </head>
-      <body className="min-h-screen bg-slate-950 text-slate-100 antialiased font-sans">
+      <body className="min-h-screen bg-[#F4EFE6] text-[#2C221E] antialiased font-sans selection:bg-[#C46D53]/20 selection:text-[#2C221E]">
         {children}
       </body>
     </html>

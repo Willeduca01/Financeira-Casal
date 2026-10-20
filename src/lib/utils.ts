@@ -53,19 +53,19 @@ export const CATEGORY_DETAILS: Record<
   ExpenseCategory,
   { label: string; color: string; icon: string; isVariableFood?: boolean }
 > = {
-  HOUSING: { label: "Moradia & Aluguel", color: "#6366f1", icon: "Home" },
-  UTILITIES: { label: "Contas da Casa", color: "#3b82f6", icon: "Zap" },
-  LOAN_INSTALLMENT: { label: "Parcela Empréstimo", color: "#f59e0b", icon: "Flame" },
-  FOOD_MARKET: { label: "Mercado do Mês", color: "#10b981", icon: "ShoppingCart", isVariableFood: true },
-  FOOD_PROTEIN: { label: "Mistura / Açougue", color: "#ef4444", icon: "Beef", isVariableFood: true },
-  SWEETS_SNACKS: { label: "Doces & Padaria", color: "#ec4899", icon: "Cookie", isVariableFood: true },
-  EAT_OUT_DELIVERY: { label: "Comer Fora / Delivery", color: "#f97316", icon: "Utensils", isVariableFood: true },
-  WEEKLY_SHOPPING: { label: "Compras da Semana / Feira", color: "#14b8a6", icon: "ShoppingBag", isVariableFood: true },
-  LEISURE: { label: "Lazer & Passeios", color: "#8b5cf6", icon: "Sparkles" },
-  TRANSPORT: { label: "Transporte / Combustível", color: "#06b6d4", icon: "Car" },
-  HEALTH: { label: "Saúde & Farmácia", color: "#e11d48", icon: "HeartPulse" },
-  SUBSCRIPTION: { label: "Assinaturas & Apps", color: "#64748b", icon: "Tv" },
-  OTHER: { label: "Outros Gastos", color: "#94a3b8", icon: "MoreHorizontal" },
+  HOUSING: { label: "Moradia & Aluguel", color: "#8C6D53", icon: "Home" },
+  UTILITIES: { label: "Contas da Casa", color: "#A3B18A", icon: "Zap" },
+  LOAN_INSTALLMENT: { label: "Parcela Empréstimo", color: "#C46D53", icon: "Flame" },
+  FOOD_MARKET: { label: "Mercado do Mês", color: "#7A8B68", icon: "ShoppingCart", isVariableFood: true },
+  FOOD_PROTEIN: { label: "Mistura / Açougue", color: "#B05B42", icon: "Beef", isVariableFood: true },
+  SWEETS_SNACKS: { label: "Doces & Padaria", color: "#D99B52", icon: "Cookie", isVariableFood: true },
+  EAT_OUT_DELIVERY: { label: "Comer Fora / Delivery", color: "#E07A5F", icon: "Utensils", isVariableFood: true },
+  WEEKLY_SHOPPING: { label: "Compras da Semana / Feira", color: "#9EA98A", icon: "ShoppingBag", isVariableFood: true },
+  LEISURE: { label: "Lazer & Passeios", color: "#C2956E", icon: "Sparkles" },
+  TRANSPORT: { label: "Transporte / Combustível", color: "#657554", icon: "Car" },
+  HEALTH: { label: "Saúde & Farmácia", color: "#A77B68", icon: "HeartPulse" },
+  SUBSCRIPTION: { label: "Assinaturas & Apps", color: "#8D7B68", icon: "Tv" },
+  OTHER: { label: "Outros Gastos", color: "#A69B8D", icon: "MoreHorizontal" },
 };
 
 /**
@@ -79,25 +79,25 @@ export const PAYMENT_METHOD_DETAILS: Record<
     label: "Débito / Pix",
     badge: "Conta Corrente",
     walletName: "Carteira Livre",
-    color: "emerald",
+    color: "#7A8B68",
   },
   VR: {
     label: "Vale Refeição (VR)",
     badge: "Benefício VR",
     walletName: "Carteira Benefícios",
-    color: "amber",
+    color: "#D99B52",
   },
   VA: {
     label: "Vale Alimentação (VA)",
     badge: "Benefício VA",
     walletName: "Carteira Benefícios",
-    color: "orange",
+    color: "#C2956E",
   },
   CREDIT_CARD: {
     label: "Cartão de Crédito",
     badge: "Fatura Mensal",
     walletName: "Fatura Crédito",
-    color: "purple",
+    color: "#C46D53",
   },
 };
 
@@ -105,13 +105,13 @@ export const INCOME_CATEGORY_DETAILS: Record<
   IncomeCategory,
   { label: string; color: string }
 > = {
-  SALARY: { label: "Salário Mensal", color: "#10b981" },
-  VR: { label: "Vale Refeição (VR)", color: "#f59e0b" },
-  VA: { label: "Vale Alimentação (VA)", color: "#f97316" },
-  BONUS: { label: "Bônus / PLR", color: "#6366f1" },
-  EXTRA: { label: "Renda Extra", color: "#06b6d4" },
-  INVESTMENT: { label: "Rendimentos", color: "#8b5cf6" },
-  OTHER: { label: "Outras Entradas", color: "#64748b" },
+  SALARY: { label: "Salário Mensal", color: "#7A8B68" },
+  VR: { label: "Vale Refeição (VR)", color: "#D99B52" },
+  VA: { label: "Vale Alimentação (VA)", color: "#C2956E" },
+  BONUS: { label: "Bônus / PLR", color: "#C46D53" },
+  EXTRA: { label: "Renda Extra", color: "#A3B18A" },
+  INVESTMENT: { label: "Rendimentos", color: "#8C6D53" },
+  OTHER: { label: "Outras Entradas", color: "#786B5E" },
 };
 
 /**

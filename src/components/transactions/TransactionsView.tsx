@@ -7,15 +7,12 @@ import {
   formatDateBR,
   CATEGORY_DETAILS,
   PAYMENT_METHOD_DETAILS,
-  INCOME_CATEGORY_DETAILS,
 } from "@/lib/utils";
 import {
-  Filter,
   Trash2,
   ArrowDownLeft,
   ArrowUpRight,
   Search,
-  Users,
   CreditCard,
   Wallet,
   UtensilsCrossed,
@@ -115,32 +112,32 @@ export const TransactionsView: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* Barra de Filtros */}
-      <div className="glass-panel rounded-2xl p-4 space-y-3">
+      {/* Barra de Filtros Artesanal */}
+      <div className="organic-card p-4 space-y-3">
         <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between">
-          {/* Campo de Busca */}
+          {/* Campo de Busca em Fundo Areia */}
           <div className="relative flex-1">
             <Search
               size={15}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#786B5E]"
             />
             <input
               type="text"
               placeholder="Buscar por descrição..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-900/90 border border-white/10 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500/50"
+              className="w-full bg-[#F4EFE6] border border-[#E6DEC8] rounded-full pl-9 pr-4 py-2 text-xs text-[#2C221E] placeholder-[#786B5E] focus:outline-none focus:border-[#C46D53]"
             />
           </div>
 
-          {/* Filtro por Pessoa */}
-          <div className="flex items-center gap-1.5 bg-slate-900/90 p-1 border border-white/10 rounded-xl overflow-x-auto text-xs">
+          {/* Filtro por Pessoa (Pílulas Acolhedoras) */}
+          <div className="flex items-center gap-1.5 bg-[#F4EFE6] p-1 border border-[#E6DEC8] rounded-full overflow-x-auto text-xs">
             <button
               onClick={() => setFilterUser("ALL")}
-              className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+              className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
                 filterUser === "ALL"
-                  ? "bg-indigo-600 text-white"
-                  : "text-slate-400 hover:text-white"
+                  ? "bg-[#C46D53] text-[#FBF9F5] shadow-sm"
+                  : "text-[#786B5E] hover:text-[#2C221E]"
               }`}
             >
               Casal
@@ -149,16 +146,16 @@ export const TransactionsView: React.FC = () => {
               <button
                 key={u.id}
                 onClick={() => setFilterUser(u.id)}
-                className={`px-3 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors ${
+                className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all ${
                   filterUser === u.id
-                    ? "bg-indigo-600 text-white"
-                    : "text-slate-400 hover:text-white"
+                    ? "bg-[#C46D53] text-[#FBF9F5] shadow-sm"
+                    : "text-[#786B5E] hover:text-[#2C221E]"
                 }`}
               >
                 <img
                   src={u.avatar}
                   alt={u.name}
-                  className="w-4 h-4 rounded-full object-cover"
+                  className="w-4 h-4 rounded-full object-cover ring-1 ring-white"
                 />
                 {u.name.split(" ")[0]}
               </button>
@@ -167,58 +164,58 @@ export const TransactionsView: React.FC = () => {
         </div>
 
         {/* Filtro por Carteiras & Meios */}
-        <div className="flex flex-wrap gap-2 pt-1 border-t border-white/10">
+        <div className="flex flex-wrap gap-2 pt-2 border-t border-[#E6DEC8]">
           <button
             onClick={() => setFilterWallet("ALL")}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-colors ${
+            className={`px-3 py-1 rounded-full text-[11px] font-semibold border transition-all ${
               filterWallet === "ALL"
-                ? "bg-slate-800 text-white border-white/20"
-                : "text-slate-400 border-transparent hover:bg-white/5"
+                ? "bg-[#7A8B68] text-[#FBF9F5] border-[#7A8B68]"
+                : "text-[#786B5E] border-[#E6DEC8] bg-[#F4EFE6] hover:bg-[#E6DEC8]"
             }`}
           >
             Todas as Carteiras
           </button>
           <button
             onClick={() => setFilterWallet("FREE")}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border flex items-center gap-1 transition-colors ${
+            className={`px-3 py-1 rounded-full text-[11px] font-semibold border flex items-center gap-1.5 transition-all ${
               filterWallet === "FREE"
-                ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
-                : "text-slate-400 border-transparent hover:bg-white/5"
+                ? "bg-[#7A8B68] text-[#FBF9F5] border-[#7A8B68]"
+                : "text-[#556943] bg-[#E9EFE4] border-[#7A8B68]/30 hover:bg-[#7A8B68]/20"
             }`}
           >
-            <Wallet size={12} className="text-emerald-400" />
+            <Wallet size={12} />
             Carteira Livre (Pix / Débito)
           </button>
           <button
             onClick={() => setFilterWallet("BENEFITS")}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border flex items-center gap-1 transition-colors ${
+            className={`px-3 py-1 rounded-full text-[11px] font-semibold border flex items-center gap-1.5 transition-all ${
               filterWallet === "BENEFITS"
-                ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
-                : "text-slate-400 border-transparent hover:bg-white/5"
+                ? "bg-[#D99B52] text-[#FBF9F5] border-[#D99B52]"
+                : "text-[#9A6424] bg-[#FDF3E7] border-[#D99B52]/30 hover:bg-[#D99B52]/20"
             }`}
           >
-            <UtensilsCrossed size={12} className="text-amber-400" />
+            <UtensilsCrossed size={12} />
             Benefícios (VR / VA)
           </button>
           <button
             onClick={() => setFilterWallet("CREDIT_CARD")}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border flex items-center gap-1 transition-colors ${
+            className={`px-3 py-1 rounded-full text-[11px] font-semibold border flex items-center gap-1.5 transition-all ${
               filterWallet === "CREDIT_CARD"
-                ? "bg-purple-500/20 text-purple-300 border-purple-500/40"
-                : "text-slate-400 border-transparent hover:bg-white/5"
+                ? "bg-[#C46D53] text-[#FBF9F5] border-[#C46D53]"
+                : "text-[#B05B42] bg-[#FCECE8] border-[#C46D53]/30 hover:bg-[#C46D53]/20"
             }`}
           >
-            <CreditCard size={12} className="text-purple-400" />
+            <CreditCard size={12} />
             Cartão de Crédito
           </button>
         </div>
       </div>
 
       {/* Lista de Movimentações */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-xs text-slate-400 px-1">
+      <div className="space-y-2.5">
+        <div className="flex items-center justify-between text-xs text-[#786B5E] px-2">
           <span>{filteredList.length} lançamentos encontrados</span>
-          <span>Ordenado por data decrescente</span>
+          <span>Mais recentes primeiro</span>
         </div>
 
         {filteredList.length > 0 ? (
@@ -234,19 +231,19 @@ export const TransactionsView: React.FC = () => {
             return (
               <div
                 key={tx.id}
-                className="glass-card-interactive rounded-2xl p-3.5 flex items-center justify-between gap-3 group"
+                className="organic-card p-4 flex items-center justify-between gap-3 group hover:border-[#C46D53]/40 transition-all"
               >
                 {/* Lado Esquerdo: Avatar & Informações */}
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="flex items-center gap-3.5 min-w-0">
                   <div className="relative shrink-0">
                     <img
                       src={user.avatar}
                       alt={user.name}
-                      className="w-10 h-10 rounded-xl object-cover ring-1 ring-white/10"
+                      className="w-10 h-10 rounded-full object-cover ring-2 ring-[#E6DEC8]"
                     />
                     <div
                       className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                        tx.isIncome ? "bg-emerald-500 text-slate-950" : "bg-rose-500 text-white"
+                        tx.isIncome ? "bg-[#7A8B68] text-[#FBF9F5]" : "bg-[#C46D53] text-[#FBF9F5]"
                       }`}
                     >
                       {tx.isIncome ? (
@@ -258,34 +255,32 @@ export const TransactionsView: React.FC = () => {
                   </div>
 
                   <div className="truncate">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold text-white truncate">
-                        {tx.description}
-                      </p>
-                    </div>
+                    <p className="text-sm font-bold text-[#2C221E] truncate">
+                      {tx.description}
+                    </p>
 
-                    <div className="flex flex-wrap items-center gap-1.5 mt-1 text-[11px] text-slate-400">
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1 text-[11px] text-[#786B5E]">
                       <span>{formatDateBR(tx.date)}</span>
-                      <span>•</span>
-                      <span className="text-slate-300 font-medium">
+                      <span>&bull;</span>
+                      <span className="font-semibold text-[#2C221E]">
                         {user.name.split(" ")[0]}
                       </span>
 
                       {/* Badge do Meio / Carteira */}
                       {paymentDetails && (
-                        <span className="px-1.5 py-0.5 rounded-md bg-white/5 border border-white/10 text-[10px] text-slate-300">
+                        <span className="px-2 py-0.5 rounded-full bg-[#F4EFE6] border border-[#E6DEC8] text-[10px] font-medium text-[#786B5E]">
                           {paymentDetails.label}
                         </span>
                       )}
 
                       {tx.isIncome && (
-                        <span className="px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 text-[10px] border border-emerald-500/20">
+                        <span className="px-2 py-0.5 rounded-full bg-[#E9EFE4] text-[#556943] text-[10px] font-semibold border border-[#7A8B68]/30">
                           {tx.walletType === "BENEFITS" ? "Benefício" : "Livre"}
                         </span>
                       )}
 
                       {catDetails && (
-                        <span className="hidden sm:inline-block text-[10px] text-slate-400">
+                        <span className="hidden sm:inline-block text-[10px] text-[#786B5E]">
                           ({catDetails.label})
                         </span>
                       )}
@@ -297,13 +292,13 @@ export const TransactionsView: React.FC = () => {
                 <div className="flex items-center gap-3 shrink-0">
                   <div className="text-right">
                     <p
-                      className={`text-sm md:text-base font-bold ${
-                        tx.isIncome ? "text-emerald-400" : "text-white"
+                      className={`text-sm md:text-base font-black ${
+                        tx.isIncome ? "text-[#7A8B68]" : "text-[#2C221E]"
                       }`}
                     >
                       {tx.isIncome ? "+" : "-"} {formatBRL(tx.amount)}
                     </p>
-                    <span className="text-[10px] text-slate-500 block">
+                    <span className="text-[10px] text-[#786B5E] block">
                       {tx.isIncome ? "Entrada" : "Saída"}
                     </span>
                   </div>
@@ -313,7 +308,7 @@ export const TransactionsView: React.FC = () => {
                       if (tx.isIncome) deleteIncome(tx.id);
                       else deleteExpense(tx.id);
                     }}
-                    className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors opacity-60 group-hover:opacity-100"
+                    className="p-2 text-[#786B5E]/50 hover:text-[#B05B42] hover:bg-[#C46D53]/10 rounded-full transition-colors opacity-70 group-hover:opacity-100"
                     title="Excluir movimentação"
                   >
                     <Trash2 size={15} />
@@ -323,9 +318,9 @@ export const TransactionsView: React.FC = () => {
             );
           })
         ) : (
-          <div className="glass-panel rounded-2xl p-8 text-center text-slate-400 text-xs space-y-2">
-            <p className="text-sm font-semibold text-slate-300">
-              Nenhuma movimentação com os filtros selecionados
+          <div className="organic-card p-10 text-center text-[#786B5E] text-xs space-y-1.5">
+            <p className="font-serif text-sm font-bold text-[#2C221E]">
+              Nenhuma movimentação encontrada
             </p>
             <p>Tente alterar o filtro de pessoa ou carteira acima.</p>
           </div>

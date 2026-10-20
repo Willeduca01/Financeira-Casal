@@ -115,19 +115,19 @@ export const AmortizationModal: React.FC<AmortizationModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="bg-slate-900 border border-amber-500/30 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-5 space-y-4 shadow-2xl animate-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-[#FBF9F5] border border-[#E6DEC8] rounded-[28px] w-full max-w-lg max-h-[90vh] overflow-y-auto p-5 sm:p-6 space-y-4 shadow-[0_16px_50px_rgb(61,44,30,0.18)] animate-in zoom-in-95 duration-150">
         {/* Cabeçalho */}
-        <div className="flex items-center justify-between pb-3 border-b border-white/10">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-500/30">
-              <Zap size={18} className="fill-amber-400" />
+        <div className="flex items-center justify-between pb-3 border-b border-[#E6DEC8]">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-2xl bg-[#C46D53]/15 text-[#C46D53] flex items-center justify-center border border-[#C46D53]/30">
+              <Zap size={18} className="fill-[#C46D53]" />
             </div>
             <div>
-              <h3 className="text-sm md:text-base font-black text-white">
+              <h3 className="text-sm md:text-base font-black font-serif text-[#2C221E]">
                 Adiantar Parcela / Amortizar
               </h3>
-              <p className="text-[10px] text-amber-300">
+              <p className="text-[10px] text-[#C46D53] font-bold">
                 Método Avalanche • Economia acelerada de juros
               </p>
             </div>
@@ -135,7 +135,7 @@ export const AmortizationModal: React.FC<AmortizationModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white rounded-xl hover:bg-white/10"
+            className="p-1.5 text-[#786B5E] hover:text-[#2C221E] rounded-xl hover:bg-[#F4EFE6] transition-colors"
           >
             <X size={18} />
           </button>
@@ -144,13 +144,13 @@ export const AmortizationModal: React.FC<AmortizationModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Selecionar Empréstimo */}
           <div>
-            <label className="text-xs text-slate-400 block mb-1">
+            <label className="text-xs text-[#786B5E] font-medium block mb-1">
               Contrato a Amortizar
             </label>
             <select
               value={selectedLoanId}
               onChange={(e) => setSelectedLoanId(e.target.value)}
-              className="w-full bg-slate-950 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+              className="w-full bg-[#F4EFE6] border border-[#E6DEC8] rounded-2xl px-3.5 py-2.5 text-xs text-[#2C221E] focus:outline-none focus:border-[#C46D53] focus:ring-2 focus:ring-[#C46D53]/15 transition-all"
             >
               {activeLoans.map((l) => (
                 <option key={l.id} value={l.id}>
@@ -161,14 +161,14 @@ export const AmortizationModal: React.FC<AmortizationModalProps> = ({
           </div>
 
           {/* Destaque da taxa do contrato selecionado */}
-          <div className="bg-slate-950/70 p-3 rounded-xl border border-white/5 space-y-1 text-xs">
-            <div className="flex justify-between text-slate-300">
+          <div className="bg-[#F4EFE6] p-3.5 rounded-2xl border border-[#E6DEC8] space-y-1.5 text-xs">
+            <div className="flex justify-between text-[#2C221E]">
               <span>Saldo Atual: <strong>{formatBRL(targetLoan.currentBalance)}</strong></span>
-              <span className="text-amber-400 font-bold">
+              <span className="text-[#C46D53] font-bold">
                 Taxa: {formatPercent(targetLoan.monthlyInterestRate)} a.m.
               </span>
             </div>
-            <div className="flex justify-between text-[11px] text-slate-400">
+            <div className="flex justify-between text-[11px] text-[#786B5E]">
               <span>Parcelas: {targetLoan.paidInstallments} / {targetLoan.totalInstallments}</span>
               <span>Parcela Mensal: {formatBRL(targetLoan.currentInstallmentAmount)}</span>
             </div>
@@ -177,14 +177,14 @@ export const AmortizationModal: React.FC<AmortizationModalProps> = ({
           {/* Valor a Pagar (Amortização) */}
           <div>
             <div className="flex justify-between items-center mb-1">
-              <label className="text-xs text-slate-400">
+              <label className="text-xs text-[#786B5E] font-medium">
                 Valor Pago na Amortização (R$)
               </label>
               {freeWallet.projectedSurplus > 0 && (
                 <button
                   type="button"
                   onClick={handleUseSurplus}
-                  className="text-[10px] text-emerald-400 hover:underline flex items-center gap-1 font-semibold"
+                  className="text-[10px] text-[#7A8B68] hover:text-[#657554] hover:underline flex items-center gap-1 font-bold transition-colors"
                 >
                   <Sparkles size={11} />
                   Usar sobra do mês ({formatBRL(freeWallet.projectedSurplus)})
@@ -198,20 +198,20 @@ export const AmortizationModal: React.FC<AmortizationModalProps> = ({
               onChange={(e) => setAmountPaid(e.target.value)}
               required
               autoFocus
-              className="w-full bg-slate-950 border border-white/15 rounded-xl px-4 py-2.5 text-xl font-black text-white focus:outline-none focus:border-amber-500"
+              className="w-full bg-[#F4EFE6] border border-[#E6DEC8] rounded-2xl px-4 py-2.5 text-2xl font-black text-[#2C221E] placeholder-[#786B5E]/40 focus:outline-none focus:border-[#C46D53] focus:ring-2 focus:ring-[#C46D53]/15 transition-all"
             />
           </div>
 
           {/* Desconto de Juros */}
           <div>
             <div className="flex justify-between items-center mb-1">
-              <label className="text-xs text-slate-400">
+              <label className="text-xs text-[#786B5E] font-medium">
                 Desconto de Juros Obtido no Banco (R$)
               </label>
               <button
                 type="button"
                 onClick={handleAutoSuggestDiscount}
-                className="text-[10px] text-amber-300 hover:underline font-medium"
+                className="text-[10px] text-[#C46D53] hover:underline font-bold"
               >
                 Estimar economia
               </button>
@@ -221,33 +221,33 @@ export const AmortizationModal: React.FC<AmortizationModalProps> = ({
               placeholder="0,00"
               value={interestDiscount}
               onChange={(e) => setInterestDiscount(e.target.value)}
-              className="w-full bg-slate-950 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+              className="w-full bg-[#F4EFE6] border border-[#E6DEC8] rounded-2xl px-3.5 py-2.5 text-xs text-[#2C221E] placeholder-[#786B5E]/50 focus:outline-none focus:border-[#C46D53] focus:ring-2 focus:ring-[#C46D53]/15 transition-all"
             />
-            <p className="text-[10px] text-slate-500 mt-1">
+            <p className="text-[10px] text-[#786B5E] mt-1">
               Informe o desconto concedido pelo banco ao adiantar a parcela ou clique em &quot;Estimar economia&quot;.
             </p>
           </div>
 
           {/* Tipo de Abatimento */}
           <div>
-            <label className="text-xs text-slate-400 block mb-1.5">
+            <label className="text-xs text-[#786B5E] font-medium block mb-1.5">
               Tipo de Abatimento no Banco
             </label>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setAbatementType("REDUCE_TERM")}
-                className={`p-2.5 rounded-xl border text-left text-xs transition-all ${
+                className={`p-3 rounded-2xl border text-left text-xs transition-all ${
                   abatementType === "REDUCE_TERM"
-                    ? "bg-amber-500/20 border-amber-500/50 text-white shadow-md"
-                    : "border-white/5 text-slate-400 hover:bg-white/5"
+                    ? "bg-[#C46D53]/15 border-[#C46D53] text-[#2C221E] shadow-sm ring-1 ring-[#C46D53]"
+                    : "bg-[#F4EFE6] border-[#E6DEC8] text-[#786B5E] hover:bg-[#E6DEC8]/50"
                 }`}
               >
-                <div className="flex items-center gap-1.5 font-bold text-amber-300">
+                <div className="flex items-center gap-1.5 font-bold text-[#C46D53]">
                   <Clock size={13} />
                   Reduzir Prazo
                 </div>
-                <p className="text-[10px] text-slate-400 mt-0.5">
+                <p className="text-[10px] text-[#786B5E] mt-0.5">
                   Abate parcelas do final do contrato (Recomendado)
                 </p>
               </button>
@@ -255,17 +255,17 @@ export const AmortizationModal: React.FC<AmortizationModalProps> = ({
               <button
                 type="button"
                 onClick={() => setAbatementType("REDUCE_INSTALLMENT")}
-                className={`p-2.5 rounded-xl border text-left text-xs transition-all ${
+                className={`p-3 rounded-2xl border text-left text-xs transition-all ${
                   abatementType === "REDUCE_INSTALLMENT"
-                    ? "bg-amber-500/20 border-amber-500/50 text-white shadow-md"
-                    : "border-white/5 text-slate-400 hover:bg-white/5"
+                    ? "bg-[#C46D53]/15 border-[#C46D53] text-[#2C221E] shadow-sm ring-1 ring-[#C46D53]"
+                    : "bg-[#F4EFE6] border-[#E6DEC8] text-[#786B5E] hover:bg-[#E6DEC8]/50"
                 }`}
               >
-                <div className="flex items-center gap-1.5 font-bold text-amber-300">
+                <div className="flex items-center gap-1.5 font-bold text-[#C46D53]">
                   <DollarSign size={13} />
                   Reduzir Parcela
                 </div>
-                <p className="text-[10px] text-slate-400 mt-0.5">
+                <p className="text-[10px] text-[#786B5E] mt-0.5">
                   Diminui o valor das parcelas mensais futuras
                 </p>
               </button>
@@ -275,7 +275,7 @@ export const AmortizationModal: React.FC<AmortizationModalProps> = ({
           {/* Campo específico conforme tipo */}
           {abatementType === "REDUCE_TERM" ? (
             <div>
-              <label className="text-xs text-slate-400 block mb-1">
+              <label className="text-xs text-[#786B5E] font-medium block mb-1">
                 Parcelas Abatidas do Final
               </label>
               <input
@@ -283,12 +283,12 @@ export const AmortizationModal: React.FC<AmortizationModalProps> = ({
                 placeholder={`Sugerido: ${estimatedInstallmentsReduced} parcelas`}
                 value={customInstallmentsReduced}
                 onChange={(e) => setCustomInstallmentsReduced(e.target.value)}
-                className="w-full bg-slate-950 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                className="w-full bg-[#F4EFE6] border border-[#E6DEC8] rounded-2xl px-3.5 py-2.5 text-xs text-[#2C221E] focus:outline-none focus:border-[#C46D53] focus:ring-2 focus:ring-[#C46D53]/15 transition-all"
               />
             </div>
           ) : (
             <div>
-              <label className="text-xs text-slate-400 block mb-1">
+              <label className="text-xs text-[#786B5E] font-medium block mb-1">
                 Novo Valor da Parcela Mensal (R$)
               </label>
               <input
@@ -296,20 +296,20 @@ export const AmortizationModal: React.FC<AmortizationModalProps> = ({
                 placeholder="Ex: 590,00"
                 value={newInstallmentAmount}
                 onChange={(e) => setNewInstallmentAmount(e.target.value)}
-                className="w-full bg-slate-950 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                className="w-full bg-[#F4EFE6] border border-[#E6DEC8] rounded-2xl px-3.5 py-2.5 text-xs text-[#2C221E] focus:outline-none focus:border-[#C46D53] focus:ring-2 focus:ring-[#C46D53]/15 transition-all"
               />
             </div>
           )}
 
           {/* Resumo da Simulação */}
-          <div className="p-3 bg-amber-950/20 border border-amber-500/30 rounded-xl space-y-1 text-xs">
-            <div className="flex justify-between text-slate-300">
+          <div className="p-3.5 bg-[#F4EFE6] border border-[#E6DEC8] rounded-2xl space-y-1.5 text-xs">
+            <div className="flex justify-between text-[#786B5E]">
               <span>Total Abatido da Dívida:</span>
-              <span className="font-bold text-white">{formatBRL(totalAbated)}</span>
+              <span className="font-bold text-[#2C221E]">{formatBRL(totalAbated)}</span>
             </div>
-            <div className="flex justify-between text-slate-300">
+            <div className="flex justify-between text-[#786B5E]">
               <span>Novo Saldo Devedor:</span>
-              <span className="font-black text-emerald-400">
+              <span className="font-black text-[#7A8B68]">
                 {formatBRL(projectedBalance)}
               </span>
             </div>
@@ -317,7 +317,7 @@ export const AmortizationModal: React.FC<AmortizationModalProps> = ({
 
           <button
             type="submit"
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-sm shadow-lg shadow-amber-500/25 transition-transform active:scale-95"
+            className="w-full py-3.5 rounded-full bg-[#C46D53] hover:bg-[#B05B42] text-[#FBF9F5] font-bold text-sm shadow-md shadow-[#C46D53]/25 transition-transform active:scale-[0.98]"
           >
             Confirmar Amortização Extraordinária
           </button>
