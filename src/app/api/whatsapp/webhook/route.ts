@@ -324,8 +324,9 @@ export async function POST(request: NextRequest) {
     }
 
     // 7. Envia a resposta amigável de volta para o usuário no WhatsApp
+    let whatsappDelivery = null;
     if (parsed.replyMessage) {
-      await sendWhatsAppMessage(cleanSender, parsed.replyMessage);
+      whatsappDelivery = await sendWhatsAppMessage(cleanSender, parsed.replyMessage);
     }
 
     return NextResponse.json({
@@ -333,6 +334,8 @@ export async function POST(request: NextRequest) {
       intent: parsed.intent,
       description: parsed.description,
       amount: parsed.amount,
+      replyMessage: parsed.replyMessage,
+      whatsappDelivery,
     });
   } catch (error) {
     console.error("[WHATSAPP_WEBHOOK_POST_ERROR]", error);
