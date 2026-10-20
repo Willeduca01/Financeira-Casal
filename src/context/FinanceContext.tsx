@@ -1,0 +1,667 @@
+"use client";
+
+import React, { createContext, useContext, useState, useEffect, useMemo } from "react";
+import {
+  User,
+  CoupleSettings,
+  Loan,
+  Income,
+  Expense,
+  LoanAmortization,
+  EmergencyFund,
+  EmergencyDeposit,
+  PaymentMethod,
+  AbatementType,
+} from "@/types";
+import {
+  INITIAL_USERS,
+  INITIAL_COUPLE_SETTINGS,
+  INITIAL_LOANS,
+  INITIAL_INCOMES,
+  INITIAL_EXPENSES,
+  INITIAL_AMORTIZATIONS,
+  INITIAL_EMERGENCY_FUND,
+} from "@/lib/mock-data";
+import { sortLoansByAvalanche, estimateInterestSavings } from "@/lib/utils";
+
+interface FinanceContextType {
+  // Usuário Ativo
+  currentUser: User;
+  switchUser: (userId: string) => void;
+  users: User[];
+  coupleSettings: CoupleSettings;
+
+  // Filtros Globais
+  selectedMonth: number; // 0-11
+  selectedYear: number;
+  setSelectedMonth: (month: number) => void;
+  setSelectedYear: (year: number) => void;
+
+  // Dados
+  incomes: Income[];
+  expenses: Expense[];
+  loans: Loan[];
+  amortizations: LoanAmortization[];
+  emergencyFund: EmergencyFund;
+
+  // Ações CRUD
+  addExpense: (expense: Omit<Expense, "id" | "userId"> & { userId?: string }) => void;
+  deleteExpense: (id: string) => void;
+  toggleFixedExpensePaid: (id: string) => void;
+  addIncome: (income: Omit<Income, "id" | "userId"> & { userId?: string }) => void;
+  deleteIncome: (id: string) => void;
+  amortizeLoan: (
+    loanId: string,
+    params: {
+      amountPaid: number;
+      interestDiscount: number;
+      abatementType: AbatementType;
+      installmentsReduced?: number;
+      newInstallmentAmount?: number;
+      notes?: string;
+    }
+  ) => void;
+  payMonthlyInstallment: (loanId: string) => void;
+  addEmergencyDeposit: (amount: number, notes?: string) => void;
+  resetAllData: () => void;
+
+  // Cálculos das Carteiras & Orçamento
+  freeWallet: {
+    totalIncomeNet: number;
+    totalSpentPaid: number;
+    currentBalance: number;
+    projectedExpenses: number;
+    projectedSurplus: number;
+  };
+
+  benefitsWallet: {
+    totalVRReceived: number;
+    totalVRSpent: number;
+    remainingVR: number;
+    vrUsagePercent: number;
+    totalVAReceived: number;
+    totalVASpent: number;
+    remainingVA: number;
+    vaUsagePercent: number;
+    totalBenefitsReceived: number;
+    totalBenefitsSpent: number;
+    remainingTotal: number;
+  };
+
+  creditCard: {
+    totalInvoiceAmount: number;
+  };
+
+  incomeStats: {
+    totalGross: number;
+    totalNet: number;
+    lucasNet: number;
+    marianaNet: number;
+    lucasProportion: number;
+    marianaProportion: number;
+  };
+
+  expenseStats: {
+    totalFixed: number;
+    totalLoans: number;
+    totalFixedAndLoans: number;
+    totalVariable: number;
+    totalGeneral: number;
+    lucasSpent: number;
+    marianaSpent: number;
+    lucasSpentPercent: number;
+    marianaSpentPercent: number;
+  };
+
+  // Motor Avalanche
+  avalanche: {
+    sortedLoans: Loan[];
+    targetLoan: Loan | null;
+    totalDebtBalance: number;
+    totalMonthlyInstallments: number;
+    suggestedAmortizationAmount: number;
+    estimatedSavingsOnTarget: number;
+  };
+
+  // Reserva de Emergência
+  emergencyFundMetrics: {
+    currentAmount: number;
+    monthlyLivingCost: number;
+    targets: {
+      threeMonths: number;
+      sixMonths: number;
+      twelveMonths: number;
+    };
+    progressPercent: number;
+  };
+}
+
+const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
+
+const STORAGE_KEY_PREFIX = "financas_casal_v1_";
+
+export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  // Carregamento com suporte a LocalStorage e Mock inicial
+  const [isClient, setIsClient] = useState(false);
+  const [users, setUsers] = useState<User[]>(INITIAL_USERS);
+  const [currentUserId, setCurrentUserId] = useState<string>("user-lucas");
+  const [coupleSettings, setCoupleSettings] = useState<CoupleSettings>(INITIAL_COUPLE_SETTINGS);
+
+  const [selectedMonth, setSelectedMonth] = useState<number>(9); // Outubro
+  const [selectedYear, setSelectedYear] = useState<number>(2026);
+
+  const [incomes, setIncomes] = useState<Income[]>(INITIAL_INCOMES);
+  const [expenses, setExpenses] = useState<Expense[]>(INITIAL_EXPENSES);
+  const [loans, setLoans] = useState<Loan[]>(INITIAL_LOANS);
+  const [amortizations, setAmortizations] = useState<LoanAmortization[]>(INITIAL_AMORTIZATIONS);
+  const [emergencyFund, setEmergencyFund] = useState<EmergencyFund>(INITIAL_EMERGENCY_FUND);
+
+  // Inicialização no cliente
+  useEffect(() => {
+    setIsClient(true);
+    const now = new Date();
+    setSelectedMonth(now.getMonth());
+    setSelectedYear(now.getFullYear());
+    try {
+      const savedUsers = localStorage.getItem(STORAGE_KEY_PREFIX + "users");
+      const savedCurrentUserId = localStorage.getItem(STORAGE_KEY_PREFIX + "currentUserId");
+      const savedIncomes = localStorage.getItem(STORAGE_KEY_PREFIX + "incomes");
+      const savedExpenses = localStorage.getItem(STORAGE_KEY_PREFIX + "expenses");
+      const savedLoans = localStorage.getItem(STORAGE_KEY_PREFIX + "loans");
+      const savedAmortizations = localStorage.getItem(STORAGE_KEY_PREFIX + "amortizations");
+      const savedEmergencyFund = localStorage.getItem(STORAGE_KEY_PREFIX + "emergencyFund");
+
+      if (savedUsers) setUsers(JSON.parse(savedUsers));
+      if (savedCurrentUserId) setCurrentUserId(savedCurrentUserId);
+      if (savedIncomes) setIncomes(JSON.parse(savedIncomes));
+      if (savedExpenses) setExpenses(JSON.parse(savedExpenses));
+      if (savedLoans) setLoans(JSON.parse(savedLoans));
+      if (savedAmortizations) setAmortizations(JSON.parse(savedAmortizations));
+      if (savedEmergencyFund) setEmergencyFund(JSON.parse(savedEmergencyFund));
+    } catch (e) {
+      console.warn("Erro ao ler do LocalStorage, usando mocks:", e);
+    }
+  }, []);
+
+  // Salvar alterações
+  useEffect(() => {
+    if (!isClient) return;
+    try {
+      localStorage.setItem(STORAGE_KEY_PREFIX + "users", JSON.stringify(users));
+      localStorage.setItem(STORAGE_KEY_PREFIX + "currentUserId", currentUserId);
+      localStorage.setItem(STORAGE_KEY_PREFIX + "incomes", JSON.stringify(incomes));
+      localStorage.setItem(STORAGE_KEY_PREFIX + "expenses", JSON.stringify(expenses));
+      localStorage.setItem(STORAGE_KEY_PREFIX + "loans", JSON.stringify(loans));
+      localStorage.setItem(STORAGE_KEY_PREFIX + "amortizations", JSON.stringify(amortizations));
+      localStorage.setItem(STORAGE_KEY_PREFIX + "emergencyFund", JSON.stringify(emergencyFund));
+    } catch (e) {
+      console.error("Erro ao persistir no LocalStorage:", e);
+    }
+  }, [isClient, users, currentUserId, incomes, expenses, loans, amortizations, emergencyFund]);
+
+  const currentUser = useMemo(
+    () => users.find((u) => u.id === currentUserId) || users[0],
+    [users, currentUserId]
+  );
+
+  const switchUser = (userId: string) => {
+    setCurrentUserId(userId);
+  };
+
+  // Filtragem de movimentações do mês/ano selecionado
+  const filteredIncomes = useMemo(() => {
+    return incomes.filter((inc) => {
+      const d = new Date(inc.receivedAt);
+      return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+    });
+  }, [incomes, selectedMonth, selectedYear]);
+
+  const filteredExpenses = useMemo(() => {
+    return expenses.filter((exp) => {
+      const d = new Date(exp.date);
+      return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+    });
+  }, [expenses, selectedMonth, selectedYear]);
+
+  // CÁLCULOS: 1. Carteira Livre
+  const freeWallet = useMemo(() => {
+    // Entradas na Carteira Livre (Salário Líquido + Extra + Bônus)
+    const totalIncomeNet = filteredIncomes
+      .filter((inc) => inc.walletType === "FREE")
+      .reduce((sum, inc) => sum + inc.amountNet, 0);
+
+    // Saídas já pagas da Carteira Livre (Débito/Pix)
+    const paidExpenses = filteredExpenses.filter(
+      (exp) => exp.isPaid && exp.paymentMethod === "DEBIT_PIX"
+    );
+    const totalSpentPaid = paidExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+
+    // Saldo atual em conta
+    const currentBalance = totalIncomeNet - totalSpentPaid;
+
+    // Total projetado de todas as despesas da carteira livre (fixos + variáveis no débito/pix + empréstimos + fatura do cartão)
+    const allFreeExpenses = filteredExpenses.filter(
+      (exp) => exp.paymentMethod === "DEBIT_PIX" || exp.paymentMethod === "CREDIT_CARD"
+    );
+    const projectedExpenses = allFreeExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+
+    // Sobra projetada do mês para o Pote Único (o que pode ir para o Avalanche!)
+    const projectedSurplus = Math.max(0, totalIncomeNet - projectedExpenses);
+
+    return {
+      totalIncomeNet,
+      totalSpentPaid,
+      currentBalance,
+      projectedExpenses,
+      projectedSurplus,
+    };
+  }, [filteredIncomes, filteredExpenses]);
+
+  // CÁLCULOS: 2. Carteira de Benefícios (VR e VA)
+  const benefitsWallet = useMemo(() => {
+    // Entradas VR e VA
+    const totalVRReceived = filteredIncomes
+      .filter((inc) => inc.walletType === "BENEFITS" && inc.benefitType === "VR")
+      .reduce((sum, inc) => sum + inc.amountNet, 0);
+
+    const totalVAReceived = filteredIncomes
+      .filter((inc) => inc.walletType === "BENEFITS" && inc.benefitType === "VA")
+      .reduce((sum, inc) => sum + inc.amountNet, 0);
+
+    // Gastos em VR e VA
+    const totalVRSpent = filteredExpenses
+      .filter((exp) => exp.paymentMethod === "VR")
+      .reduce((sum, exp) => sum + exp.amount, 0);
+
+    const totalVASpent = filteredExpenses
+      .filter((exp) => exp.paymentMethod === "VA")
+      .reduce((sum, exp) => sum + exp.amount, 0);
+
+    const remainingVR = Math.max(0, totalVRReceived - totalVRSpent);
+    const remainingVA = Math.max(0, totalVAReceived - totalVASpent);
+
+    const vrUsagePercent =
+      totalVRReceived > 0 ? Math.min(100, (totalVRSpent / totalVRReceived) * 100) : 0;
+    const vaUsagePercent =
+      totalVAReceived > 0 ? Math.min(100, (totalVASpent / totalVAReceived) * 100) : 0;
+
+    const totalBenefitsReceived = totalVRReceived + totalVAReceived;
+    const totalBenefitsSpent = totalVRSpent + totalVASpent;
+    const remainingTotal = remainingVR + remainingVA;
+
+    return {
+      totalVRReceived,
+      totalVRSpent,
+      remainingVR,
+      vrUsagePercent,
+      totalVAReceived,
+      totalVASpent,
+      remainingVA,
+      vaUsagePercent,
+      totalBenefitsReceived,
+      totalBenefitsSpent,
+      remainingTotal,
+    };
+  }, [filteredIncomes, filteredExpenses]);
+
+  // CÁLCULOS: 3. Cartão de Crédito
+  const creditCard = useMemo(() => {
+    const totalInvoiceAmount = filteredExpenses
+      .filter((exp) => exp.paymentMethod === "CREDIT_CARD")
+      .reduce((sum, exp) => sum + exp.amount, 0);
+
+    return { totalInvoiceAmount };
+  }, [filteredExpenses]);
+
+  // CÁLCULOS: 4. Rastreabilidade e Divisão do Casal (Receitas)
+  const incomeStats = useMemo(() => {
+    const totalGross = filteredIncomes.reduce((sum, inc) => sum + inc.amountGross, 0);
+    const totalNet = filteredIncomes.reduce((sum, inc) => sum + inc.amountNet, 0);
+
+    const lucasNet = filteredIncomes
+      .filter((inc) => inc.userId === "user-lucas")
+      .reduce((sum, inc) => sum + inc.amountNet, 0);
+
+    const marianaNet = filteredIncomes
+      .filter((inc) => inc.userId === "user-mariana")
+      .reduce((sum, inc) => sum + inc.amountNet, 0);
+
+    const totalNetCombined = lucasNet + marianaNet;
+    const lucasProportion =
+      totalNetCombined > 0 ? (lucasNet / totalNetCombined) * 100 : 50;
+    const marianaProportion =
+      totalNetCombined > 0 ? (marianaNet / totalNetCombined) * 100 : 50;
+
+    return {
+      totalGross,
+      totalNet,
+      lucasNet,
+      marianaNet,
+      lucasProportion: Math.round(lucasProportion * 10) / 10,
+      marianaProportion: Math.round(marianaProportion * 10) / 10,
+    };
+  }, [filteredIncomes]);
+
+  // CÁLCULOS: 5. Despesas por Tipo e Rastreabilidade
+  const expenseStats = useMemo(() => {
+    const totalFixed = filteredExpenses
+      .filter((exp) => exp.expenseType === "FIXED")
+      .reduce((sum, exp) => sum + exp.amount, 0);
+
+    const totalLoans = filteredExpenses
+      .filter((exp) => exp.expenseType === "LOAN")
+      .reduce((sum, exp) => sum + exp.amount, 0);
+
+    const totalVariable = filteredExpenses
+      .filter((exp) => exp.expenseType === "VARIABLE")
+      .reduce((sum, exp) => sum + exp.amount, 0);
+
+    const totalGeneral = totalFixed + totalLoans + totalVariable;
+
+    const lucasSpent = filteredExpenses
+      .filter((exp) => exp.userId === "user-lucas")
+      .reduce((sum, exp) => sum + exp.amount, 0);
+
+    const marianaSpent = filteredExpenses
+      .filter((exp) => exp.userId === "user-mariana")
+      .reduce((sum, exp) => sum + exp.amount, 0);
+
+    const lucasSpentPercent = totalGeneral > 0 ? (lucasSpent / totalGeneral) * 100 : 50;
+    const marianaSpentPercent = totalGeneral > 0 ? (marianaSpent / totalGeneral) * 100 : 50;
+
+    return {
+      totalFixed,
+      totalLoans,
+      totalFixedAndLoans: totalFixed + totalLoans,
+      totalVariable,
+      totalGeneral,
+      lucasSpent,
+      marianaSpent,
+      lucasSpentPercent: Math.round(lucasSpentPercent * 10) / 10,
+      marianaSpentPercent: Math.round(marianaSpentPercent * 10) / 10,
+    };
+  }, [filteredExpenses]);
+
+  // CÁLCULOS: 6. Motor Método Avalanche (Ordenação pela maior taxa de juros)
+  const avalanche = useMemo(() => {
+    const sortedLoans = sortLoansByAvalanche(loans);
+    const activeLoans = sortedLoans.filter((l) => l.status === "ACTIVE");
+    const targetLoan = activeLoans.length > 0 ? activeLoans[0] : null;
+
+    const totalDebtBalance = activeLoans.reduce((sum, l) => sum + l.currentBalance, 0);
+    const totalMonthlyInstallments = activeLoans.reduce(
+      (sum, l) => sum + l.currentInstallmentAmount,
+      0
+    );
+
+    const suggestedAmortizationAmount = freeWallet.projectedSurplus;
+
+    const estimatedSavingsOnTarget = targetLoan
+      ? estimateInterestSavings(
+          suggestedAmortizationAmount > 0 ? suggestedAmortizationAmount : 1000,
+          targetLoan.monthlyInterestRate,
+          targetLoan.totalInstallments - targetLoan.paidInstallments
+        )
+      : 0;
+
+    return {
+      sortedLoans,
+      targetLoan,
+      totalDebtBalance,
+      totalMonthlyInstallments,
+      suggestedAmortizationAmount,
+      estimatedSavingsOnTarget,
+    };
+  }, [loans, freeWallet.projectedSurplus]);
+
+  // CÁLCULOS: 7. Reserva de Emergência
+  const emergencyFundMetrics = useMemo(() => {
+    // Custo de vida mensal = Gastos Fixos + Parcelas + Gastos Variáveis Essenciais
+    const monthlyLivingCost =
+      expenseStats.totalFixedAndLoans + Math.max(1500, expenseStats.totalVariable * 0.85);
+
+    const targetMonths = emergencyFund.targetMonths || 6;
+    const targetAmount = monthlyLivingCost * targetMonths;
+    const currentAmount = emergencyFund.currentAmount;
+    const progressPercent =
+      targetAmount > 0 ? Math.min(100, (currentAmount / targetAmount) * 100) : 0;
+
+    return {
+      currentAmount,
+      monthlyLivingCost: Math.round(monthlyLivingCost),
+      targets: {
+        threeMonths: Math.round(monthlyLivingCost * 3),
+        sixMonths: Math.round(monthlyLivingCost * 6),
+        twelveMonths: Math.round(monthlyLivingCost * 12),
+      },
+      progressPercent: Math.round(progressPercent * 10) / 10,
+    };
+  }, [expenseStats, emergencyFund]);
+
+  // AÇÕES: Despesas
+  const addExpense = (
+    expenseData: Omit<Expense, "id" | "userId"> & { userId?: string }
+  ) => {
+    const newExpense: Expense = {
+      ...expenseData,
+      id: "exp-" + Date.now(),
+      userId: expenseData.userId || currentUser.id,
+    };
+    setExpenses((prev) => [newExpense, ...prev]);
+  };
+
+  const deleteExpense = (id: string) => {
+    setExpenses((prev) => prev.filter((e) => e.id !== id));
+  };
+
+  const toggleFixedExpensePaid = (id: string) => {
+    setExpenses((prev) =>
+      prev.map((e) => (e.id === id ? { ...e, isPaid: !e.isPaid } : e))
+    );
+  };
+
+  // AÇÕES: Receitas
+  const addIncome = (
+    incomeData: Omit<Income, "id" | "userId"> & { userId?: string }
+  ) => {
+    const newIncome: Income = {
+      ...incomeData,
+      id: "inc-" + Date.now(),
+      userId: incomeData.userId || currentUser.id,
+    };
+    setIncomes((prev) => [newIncome, ...prev]);
+  };
+
+  const deleteIncome = (id: string) => {
+    setIncomes((prev) => prev.filter((i) => i.id !== id));
+  };
+
+  // AÇÕES: Amortização de Empréstimos (Método Avalanche)
+  const amortizeLoan = (
+    loanId: string,
+    params: {
+      amountPaid: number;
+      interestDiscount: number;
+      abatementType: AbatementType;
+      installmentsReduced?: number;
+      newInstallmentAmount?: number;
+      notes?: string;
+    }
+  ) => {
+    const loan = loans.find((l) => l.id === loanId);
+    if (!loan) return;
+
+    const totalAbated = params.amountPaid + params.interestDiscount;
+    const newBalance = Math.max(0, loan.currentBalance - totalAbated);
+    const isPaidOff = newBalance <= 0;
+
+    let updatedPaidInstallments = loan.paidInstallments;
+    let updatedTotalInstallments = loan.totalInstallments;
+    let updatedInstallmentAmount = loan.currentInstallmentAmount;
+
+    if (params.abatementType === "REDUCE_TERM") {
+      const reduced = params.installmentsReduced || Math.ceil(totalAbated / loan.currentInstallmentAmount);
+      updatedTotalInstallments = Math.max(loan.paidInstallments, loan.totalInstallments - reduced);
+    } else if (params.abatementType === "REDUCE_INSTALLMENT" && params.newInstallmentAmount) {
+      updatedInstallmentAmount = params.newInstallmentAmount;
+    }
+
+    // Atualizar Empréstimo
+    setLoans((prev) =>
+      prev.map((l) =>
+        l.id === loanId
+          ? {
+              ...l,
+              currentBalance: newBalance,
+              totalInstallments: updatedTotalInstallments,
+              currentInstallmentAmount: updatedInstallmentAmount,
+              status: isPaidOff ? "PAID_OFF" : "ACTIVE",
+            }
+          : l
+      )
+    );
+
+    // Registrar Amortização no histórico
+    const newAmortization: LoanAmortization = {
+      id: "amort-" + Date.now(),
+      loanId,
+      amountPaid: params.amountPaid,
+      interestDiscount: params.interestDiscount,
+      totalAbated,
+      abatementType: params.abatementType,
+      installmentsReduced: params.installmentsReduced || 0,
+      previousInstallmentAmount: loan.currentInstallmentAmount,
+      newInstallmentAmount: params.newInstallmentAmount,
+      date: new Date().toISOString(),
+      userId: currentUser.id,
+      notes: params.notes,
+    };
+    setAmortizations((prev) => [newAmortization, ...prev]);
+
+    // Criar movimentação de saída na Carteira Livre
+    addExpense({
+      description: `Amortização ${loan.name} (Desc. Juros: R$ ${params.interestDiscount.toFixed(2)})`,
+      amount: params.amountPaid,
+      date: new Date().toISOString(),
+      category: "LOAN_INSTALLMENT",
+      expenseType: "LOAN",
+      paymentMethod: "DEBIT_PIX",
+      isPaid: true,
+      loanId,
+      userId: currentUser.id,
+    });
+  };
+
+  // Pagar Parcela Mensal do Empréstimo
+  const payMonthlyInstallment = (loanId: string) => {
+    const loan = loans.find((l) => l.id === loanId);
+    if (!loan) return;
+
+    const newPaid = Math.min(loan.totalInstallments, loan.paidInstallments + 1);
+    const newBalance = Math.max(0, loan.currentBalance - loan.currentInstallmentAmount);
+    const isPaidOff = newPaid >= loan.totalInstallments || newBalance <= 0;
+
+    setLoans((prev) =>
+      prev.map((l) =>
+        l.id === loanId
+          ? {
+              ...l,
+              paidInstallments: newPaid,
+              currentBalance: newBalance,
+              status: isPaidOff ? "PAID_OFF" : "ACTIVE",
+            }
+          : l
+      )
+    );
+
+    // Marcar despesa correspondente como paga se existir
+    setExpenses((prev) =>
+      prev.map((e) =>
+        e.loanId === loanId && e.expenseType === "LOAN" && !e.isPaid
+          ? { ...e, isPaid: true }
+          : e
+      )
+    );
+  };
+
+  // Reserva de Emergência: Aporte
+  const addEmergencyDeposit = (amount: number, notes?: string) => {
+    if (amount <= 0) return;
+    setEmergencyFund((prev) => ({
+      ...prev,
+      currentAmount: prev.currentAmount + amount,
+    }));
+
+    // Criar saída correspondente da Carteira Livre
+    addExpense({
+      description: `Aporte Reserva de Emergência (${notes || "Poupança"})`,
+      amount,
+      date: new Date().toISOString(),
+      category: "OTHER",
+      expenseType: "FIXED",
+      paymentMethod: "DEBIT_PIX",
+      isPaid: true,
+      userId: currentUser.id,
+    });
+  };
+
+  // Resetar dados para o padrão inicial
+  const resetAllData = () => {
+    setUsers(INITIAL_USERS);
+    setCurrentUserId("user-lucas");
+    setIncomes(INITIAL_INCOMES);
+    setExpenses(INITIAL_EXPENSES);
+    setLoans(INITIAL_LOANS);
+    setAmortizations(INITIAL_AMORTIZATIONS);
+    setEmergencyFund(INITIAL_EMERGENCY_FUND);
+    localStorage.clear();
+  };
+
+  return (
+    <FinanceContext.Provider
+      value={{
+        currentUser,
+        switchUser,
+        users,
+        coupleSettings,
+        selectedMonth,
+        selectedYear,
+        setSelectedMonth,
+        setSelectedYear,
+        incomes: filteredIncomes,
+        expenses: filteredExpenses,
+        loans,
+        amortizations,
+        emergencyFund,
+        addExpense,
+        deleteExpense,
+        toggleFixedExpensePaid,
+        addIncome,
+        deleteIncome,
+        amortizeLoan,
+        payMonthlyInstallment,
+        addEmergencyDeposit,
+        resetAllData,
+        freeWallet,
+        benefitsWallet,
+        creditCard,
+        incomeStats,
+        expenseStats,
+        avalanche,
+        emergencyFundMetrics,
+      }}
+    >
+      {children}
+    </FinanceContext.Provider>
+  );
+};
+
+export const useFinance = () => {
+  const context = useContext(FinanceContext);
+  if (!context) {
+    throw new Error("useFinance deve ser utilizado dentro de um FinanceProvider");
+  }
+  return context;
+};

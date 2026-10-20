@@ -1,0 +1,204 @@
+// This is your Prisma schema file for Gestão Financeira Casal
+// Configured for Neon (Serverless PostgreSQL)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PARTNER
+  ADMIN
+}
+
+enum IncomeCategory {
+  SALARY
+  VR
+  VA
+  BONUS
+  EXTRA
+  INVESTMENT
+  OTHER
+}
+
+enum WalletType {
+  FREE        // Carteira Livre (Salário Líquido, Bônus, Renda Extra)
+  BENEFITS    // Carteira de Benefícios (VR e VA)
+}
+
+enum BenefitType {
+  VR          // Vale Refeição
+  VA          // Vale Alimentação
+}
+
+enum ExpenseCategory {
+  HOUSING            // Aluguel, Condomínio
+  UTILITIES          // Luz, Água, Gás, Internet
+  LOAN_INSTALLMENT   // Parcela de Empréstimo
+  FOOD_MARKET        // Mercado do Mês
+  FOOD_PROTEIN       // Mistura / Açougue / Proteínas
+  SWEETS_SNACKS      // Doces / Padaria / Lanches
+  EAT_OUT_DELIVERY   // Restaurante / Delivery / Comer Fora
+  WEEKLY_SHOPPING    // Compras da semana / Feira
+  LEISURE            // Lazer / Streaming / Cinema
+  TRANSPORT          // Combustível / Uber / Transporte
+  HEALTH             // Farmácia / Saúde
+  SUBSCRIPTION       // Assinaturas fixas
+  OTHER              // Outros
+}
+
+enum ExpenseType {
+  FIXED              // Gastos Fixos (Aluguel, Luz, etc.)
+  VARIABLE           // Gastos Variáveis (Mercado, Lazer, etc.)
+  LOAN               // Parcela de Empréstimo
+}
+
+enum PaymentMethod {
+  DEBIT_PIX          // Conta Corrente / Pix / Débito (Carteira Livre)
+  VR                 // Vale Refeição (Carteira de Benefícios)
+  VA                 // Vale Alimentação (Carteira de Benefícios)
+  CREDIT_CARD        // Cartão de Crédito (Impacta Carteira Livre na fatura)
+}
+
+enum LoanStatus {
+  ACTIVE
+  PAID_OFF
+}
+
+enum AbatementType {
+  REDUCE_TERM        // Reduzir prazo (abater parcelas do final)
+  REDUCE_INSTALLMENT // Reduzir valor da próxima parcela / restantes
+}
+
+model User {
+  id               String             @id @default(cuid())
+  name             String
+  email            String             @unique
+  avatar           String?
+  role             Role               @default(PARTNER)
+  salaryGross      Decimal            @default(0) @db.Decimal(12, 2)
+  salaryNet        Decimal            @default(0) @db.Decimal(12, 2)
+  vrAmount         Decimal            @default(0) @db.Decimal(12, 2)
+  vaAmount         Decimal            @default(0) @db.Decimal(12, 2)
+  incomeProportion Decimal            @default(50.0) @db.Decimal(5, 2) // Proporção no orçamento (%)
+  
+  incomes          Income[]
+  expenses         Expense[]
+  amortizations    LoanAmortization[]
+  deposits         EmergencyDeposit[]
+  
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+}
+
+model CoupleSettings {
+  id                         String   @id @default(cuid())
+  coupleName                 String   @default("Finanças do Casal")
+  emergencyFundMonthsTarget  Int      @default(6) // 3, 6 ou 12 meses
+  user1SalaryProportion      Decimal  @default(50.0) @db.Decimal(5, 2)
+  user2SalaryProportion      Decimal  @default(50.0) @db.Decimal(5, 2)
+  updatedAt                  DateTime @updatedAt
+}
+
+model Income {
+  id          String         @id @default(cuid())
+  description String
+  amountGross Decimal        @db.Decimal(12, 2)
+  amountNet   Decimal        @db.Decimal(12, 2)
+  category    IncomeCategory
+  walletType  WalletType     @default(FREE)
+  benefitType BenefitType?
+  receivedAt  DateTime
+  
+  userId      String
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime       @default(now())
+}
+
+model Expense {
+  id                     String          @id @default(cuid())
+  description            String
+  amount                 Decimal         @db.Decimal(12, 2)
+  date                   DateTime
+  category               ExpenseCategory
+  expenseType            ExpenseType
+  paymentMethod          PaymentMethod
+  isPaid                 Boolean         @default(true)
+  dueDate                DateTime?
+  creditCardInvoiceMonth String?         // ex: "2026-10"
+  
+  loanId                 String?
+  loan                   Loan?           @relation(fields: [loanId], references: [id], onDelete: SetNull)
+  
+  userId                 String
+  user                   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt              DateTime        @default(now())
+}
+
+model Loan {
+  id                      String             @id @default(cuid())
+  name                    String             // ex: "Empréstimo Caixa Consignado"
+  bank                    String             // ex: "Caixa Econômica"
+  originalAmount          Decimal            @db.Decimal(12, 2)
+  currentBalance          Decimal            @db.Decimal(12, 2)
+  monthlyInterestRate     Decimal            @db.Decimal(6, 3) // Taxa mensal (%) ex: 3.450%
+  totalInstallments       Int
+  paidInstallments        Int
+  currentInstallmentAmount Decimal           @db.Decimal(12, 2)
+  dueDay                  Int                // Dia do mês (1 a 31)
+  status                  LoanStatus         @default(ACTIVE)
+  notes                   String?
+  
+  amortizations           LoanAmortization[]
+  expenses                Expense[]
+  
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+}
+
+model LoanAmortization {
+  id                       String        @id @default(cuid())
+  loanId                   String
+  loan                     Loan          @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  amountPaid               Decimal       @db.Decimal(12, 2) // Valor pago na amortização
+  interestDiscount         Decimal       @db.Decimal(12, 2) // Desconto de juros obtido
+  totalAbated              Decimal       @db.Decimal(12, 2) // amountPaid + interestDiscount
+  abatementType            AbatementType // REDUCE_TERM ou REDUCE_INSTALLMENT
+  installmentsReduced      Int           @default(0)
+  previousInstallmentAmount Decimal?     @db.Decimal(12, 2)
+  newInstallmentAmount     Decimal?      @db.Decimal(12, 2)
+  date                     DateTime      @default(now())
+  
+  userId                   String
+  user                     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notes                    String?
+}
+
+model EmergencyFund {
+  id                         String             @id @default(cuid())
+  currentAmount              Decimal            @default(0) @db.Decimal(12, 2)
+  targetMonths               Int                @default(6) // 3, 6, 12 meses
+  monthlyLivingCostCalculated Decimal           @default(0) @db.Decimal(12, 2)
+  notes                      String?
+  updatedAt                  DateTime           @updatedAt
+  
+  deposits                   EmergencyDeposit[]
+}
+
+model EmergencyDeposit {
+  id        String        @id @default(cuid())
+  fundId    String
+  fund      EmergencyFund @relation(fields: [fundId], references: [id], onDelete: Cascade)
+  amount    Decimal       @db.Decimal(12, 2)
+  date      DateTime      @default(now())
+  
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notes     String?
+}
