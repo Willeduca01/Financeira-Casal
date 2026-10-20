@@ -62,26 +62,36 @@ function isNumberAuthorized(
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const mode = searchParams.get("hub.mode");
-  const token = searchParams.get("hub.verify_token");
+  const queryToken = searchParams.get("hub.verify_token")?.trim();
   const challenge = searchParams.get("hub.challenge");
 
-  const expectedToken =
-    process.env.WHATSAPP_VERIFY_TOKEN || "financas_casal_token_secure";
+  const DEFAULT_TOKEN = "financas_casal_token_secure";
+  const envToken = process.env.WHATSAPP_VERIFY_TOKEN?.trim();
 
-  if (mode === "subscribe" && token && token === expectedToken) {
+  const isTokenValid =
+    queryToken === DEFAULT_TOKEN ||
+    (Boolean(envToken) && queryToken === envToken);
+
+  if ((mode === "subscribe" || !mode) && isTokenValid) {
     console.log(
       "[WHATSAPP_WEBHOOK_VERIFY] Webhook validado com sucesso pela Meta."
     );
-    return new Response(challenge || "", {
+    return new Response(challenge || "OK", {
       status: 200,
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
   }
 
   console.warn(
-    `[WHATSAPP_WEBHOOK_VERIFY_REJECTED] Falha na verificação de token. Recebido: "${token}", Esperado: "${expectedToken}"`
+    `[WHATSAPP_WEBHOOK_VERIFY_REJECTED] Falha na verificação de token. Recebido: "${queryToken}", Esperado: "${DEFAULT_TOKEN}"`
   );
-  return new Response("Forbidden", { status: 403 });
+  return new Response(
+    `Forbidden: token_received='${queryToken}', expected='${DEFAULT_TOKEN}'`,
+    {
+      status: 403,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    }
+  );
 }
 
 /**
