@@ -1,9 +1,14 @@
 "use client";
 
 import React from "react";
-import { LayoutDashboard, ReceiptText, Zap, ShieldCheck, Plus } from "lucide-react";
+import { LayoutDashboard, ReceiptText, Zap, ShieldCheck, Plus, CreditCard } from "lucide-react";
 
-export type TabType = "dashboard" | "transactions" | "loans" | "fixed-reserve";
+export type TabType =
+  | "dashboard"
+  | "transactions"
+  | "cards"
+  | "loans"
+  | "fixed-reserve";
 
 interface BottomNavProps {
   activeTab: TabType;
@@ -37,18 +42,18 @@ export const BottomNav: React.FC<BottomNavProps> = ({
             )}
           </button>
 
-          {/* Aba 2: Extrato */}
+          {/* Aba 2: Cartões & Benefícios */}
           <button
-            onClick={() => onChangeTab("transactions")}
+            onClick={() => onChangeTab("cards")}
             className={`flex flex-col items-center justify-center py-1 transition-all relative ${
-              activeTab === "transactions"
+              activeTab === "cards"
                 ? "text-[#FBF9F5] font-bold scale-105"
                 : "text-[#FBF9F5]/70 hover:text-[#FBF9F5]"
             }`}
           >
-            <ReceiptText size={20} className="stroke-[2.2]" />
-            <span className="text-[10px] mt-1 tracking-tight font-medium">Extrato</span>
-            {activeTab === "transactions" && (
+            <CreditCard size={20} className="stroke-[2.2]" />
+            <span className="text-[10px] mt-1 tracking-tight font-medium">Cartões</span>
+            {activeTab === "cards" && (
               <span className="w-1.5 h-1.5 rounded-full bg-[#FBF9F5] mt-0.5" />
             )}
           </button>

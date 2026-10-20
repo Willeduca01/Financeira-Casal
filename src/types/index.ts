@@ -79,6 +79,46 @@ export interface Expense {
   dueDate?: string;
   creditCardInvoiceMonth?: string;
   loanId?: string;
+  creditCardId?: string;
+  userId: string;
+}
+
+export interface CreditCard {
+  id: string;
+  name: string;
+  bank: string;
+  color: string;
+  lastFourDigits?: string;
+  totalLimit: number;
+  availableLimit: number;
+  closingDay: number;
+  dueDay: number;
+  userId: string;
+  installments?: CreditCardInstallment[];
+}
+
+export interface CreditCardInstallment {
+  id: string;
+  cardId: string;
+  description: string;
+  totalAmount: number;
+  installmentAmount: number;
+  totalInstallments: number;
+  currentInstallment: number;
+  category: ExpenseCategory;
+  purchaseDate: string;
+  userId: string;
+}
+
+export interface BenefitCard {
+  id: string;
+  name: string;
+  type: BenefitType; // "VR" | "VA"
+  currentBalance: number;
+  monthlyDeposit: number;
+  depositDay: number;
+  color: string;
+  lastFourDigits?: string;
   userId: string;
 }
 

@@ -15,6 +15,7 @@ import {
   X,
   Sparkles,
   Mountain,
+  CreditCard,
 } from "lucide-react";
 
 const MONTH_NAMES = [
@@ -80,6 +81,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: "dashboard",
       label: "Visão Geral",
       icon: <LayoutDashboard size={20} className="shrink-0" />,
+    },
+    {
+      id: "cards",
+      label: "Cartões & Benefícios",
+      icon: <CreditCard size={20} className="shrink-0" />,
+      badge: "Crédito & VR/VA",
     },
     {
       id: "transactions",

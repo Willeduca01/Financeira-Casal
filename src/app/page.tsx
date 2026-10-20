@@ -12,6 +12,7 @@ import { ChartsSection } from "@/components/dashboard/ChartsSection";
 import { TransactionsView } from "@/components/transactions/TransactionsView";
 import { LoansAvalancheView } from "@/components/loans/LoansAvalancheView";
 import { FixedAndReserveView } from "@/components/fixed-and-reserve/FixedAndReserveView";
+import { CardsView } from "@/components/cards/CardsView";
 import { NewTransactionModal } from "@/components/modals/NewTransactionModal";
 import { AmortizationModal } from "@/components/modals/AmortizationModal";
 
@@ -75,7 +76,14 @@ function DashboardContent() {
             </div>
           )}
 
-          {/* TAB 2: EXTRATO & CARTEIRAS */}
+          {/* TAB 2: CARTÕES & BENEFÍCIOS */}
+          {activeTab === "cards" && (
+            <div className="animate-in fade-in duration-200">
+              <CardsView />
+            </div>
+          )}
+
+          {/* TAB 3: EXTRATO & CARTEIRAS */}
           {activeTab === "transactions" && (
             <div className="animate-in fade-in duration-200 space-y-4">
               <div>

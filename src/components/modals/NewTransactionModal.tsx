@@ -22,7 +22,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
   isOpen,
   onClose,
 }) => {
-  const { currentUser, users, addExpense, addIncome } = useFinance();
+  const { currentUser, users, addExpense, addIncome, creditCards, benefitCards } = useFinance();
 
   const [activeTab, setActiveTab] = useState<"expense" | "income">("expense");
 
@@ -33,6 +33,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("VA");
   const [expenseType, setExpenseType] = useState<ExpenseType>("VARIABLE");
   const [selectedUserId, setSelectedUserId] = useState(currentUser.id);
+  const [selectedCardId, setSelectedCardId] = useState<string>("");
 
   // Campos de Receita
   const [incomeDescription, setIncomeDescription] = useState("");
@@ -69,10 +70,12 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
         paymentMethod,
         isPaid: true,
         userId: selectedUserId,
+        creditCardId: paymentMethod === "CREDIT_CARD" ? selectedCardId || undefined : undefined,
       });
       // Reset form
       setDescription("");
       setAmount("");
+      setSelectedCardId("");
       onClose();
     }
   };
@@ -312,6 +315,27 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
                   );
                 })}
               </div>
+
+              {/* Seletor dinâmico de Cartão de Crédito se o método for Cartão */}
+              {paymentMethod === "CREDIT_CARD" && creditCards.length > 0 && (
+                <div className="mt-2.5 bg-[#C46D53]/10 border border-[#C46D53]/25 p-2.5 rounded-2xl animate-in fade-in duration-150">
+                  <label className="text-[11px] text-[#2C221E] font-bold block mb-1">
+                    Vincular ao Cartão de Crédito:
+                  </label>
+                  <select
+                    value={selectedCardId}
+                    onChange={(e) => setSelectedCardId(e.target.value)}
+                    className="w-full bg-[#FBF9F5] border border-[#E6DEC8] rounded-xl px-3 py-2 text-xs font-bold text-[#2C221E] focus:outline-hidden"
+                  >
+                    <option value="">Selecione o cartão...</option>
+                    {creditCards.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.bank}) &bull; Limite Liberado: R$ {c.availableLimit.toFixed(2)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             {/* Tipo: Fixo ou Variável */}

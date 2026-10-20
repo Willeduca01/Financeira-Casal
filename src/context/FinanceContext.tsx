@@ -12,6 +12,9 @@ import {
   EmergencyDeposit,
   PaymentMethod,
   AbatementType,
+  CreditCard,
+  CreditCardInstallment,
+  BenefitCard,
 } from "@/types";
 import {
   INITIAL_USERS,
@@ -21,6 +24,9 @@ import {
   INITIAL_EXPENSES,
   INITIAL_AMORTIZATIONS,
   INITIAL_EMERGENCY_FUND,
+  INITIAL_CREDIT_CARDS,
+  INITIAL_INSTALLMENTS,
+  INITIAL_BENEFIT_CARDS,
 } from "@/lib/mock-data";
 import { sortLoansByAvalanche, estimateInterestSavings } from "@/lib/utils";
 
@@ -43,6 +49,9 @@ interface FinanceContextType {
   loans: Loan[];
   amortizations: LoanAmortization[];
   emergencyFund: EmergencyFund;
+  creditCards: CreditCard[];
+  installments: CreditCardInstallment[];
+  benefitCards: BenefitCard[];
 
   // Ações CRUD
   addExpense: (expense: Omit<Expense, "id" | "userId"> & { userId?: string }) => void;
@@ -63,7 +72,29 @@ interface FinanceContextType {
   ) => void;
   payMonthlyInstallment: (loanId: string) => void;
   addEmergencyDeposit: (amount: number, notes?: string) => void;
+  
+  // Ações CRUD Cartões & Benefícios
+  addCreditCard: (card: Omit<CreditCard, "id">) => void;
+  updateCreditCard: (id: string, card: Partial<CreditCard>) => void;
+  deleteCreditCard: (id: string) => void;
+  addInstallment: (installment: Omit<CreditCardInstallment, "id">) => void;
+  deleteInstallment: (id: string) => void;
+  addBenefitCard: (card: Omit<BenefitCard, "id">) => void;
+  updateBenefitCardBalance: (id: string, newBalance: number) => void;
+  deleteBenefitCard: (id: string) => void;
+  
   resetAllData: () => void;
+
+  cardsMetrics: {
+    totalCreditLimit: number;
+    totalAvailableLimit: number;
+    totalCommittedLimit: number;
+    totalMonthlyInstallmentsAmount: number;
+    totalBenefitBalanceVR: number;
+    totalBenefitBalanceVA: number;
+    totalBenefitBalance: number;
+    totalMonthlyBenefitDeposit: number;
+  };
 
   // Cálculos das Carteiras & Orçamento
   freeWallet: {
@@ -157,6 +188,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
   const [loans, setLoans] = useState<Loan[]>(INITIAL_LOANS);
   const [amortizations, setAmortizations] = useState<LoanAmortization[]>(INITIAL_AMORTIZATIONS);
   const [emergencyFund, setEmergencyFund] = useState<EmergencyFund>(INITIAL_EMERGENCY_FUND);
+  const [creditCards, setCreditCards] = useState<CreditCard[]>(INITIAL_CREDIT_CARDS);
+  const [installments, setInstallments] = useState<CreditCardInstallment[]>(INITIAL_INSTALLMENTS);
+  const [benefitCards, setBenefitCards] = useState<BenefitCard[]>(INITIAL_BENEFIT_CARDS);
 
   // Inicialização no cliente
   useEffect(() => {
@@ -172,6 +206,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       const savedLoans = localStorage.getItem(STORAGE_KEY_PREFIX + "loans");
       const savedAmortizations = localStorage.getItem(STORAGE_KEY_PREFIX + "amortizations");
       const savedEmergencyFund = localStorage.getItem(STORAGE_KEY_PREFIX + "emergencyFund");
+      const savedCreditCards = localStorage.getItem(STORAGE_KEY_PREFIX + "creditCards");
+      const savedInstallments = localStorage.getItem(STORAGE_KEY_PREFIX + "installments");
+      const savedBenefitCards = localStorage.getItem(STORAGE_KEY_PREFIX + "benefitCards");
 
       if (savedUsers) setUsers(JSON.parse(savedUsers));
       if (savedCurrentUserId) setCurrentUserId(savedCurrentUserId);
@@ -180,6 +217,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       if (savedLoans) setLoans(JSON.parse(savedLoans));
       if (savedAmortizations) setAmortizations(JSON.parse(savedAmortizations));
       if (savedEmergencyFund) setEmergencyFund(JSON.parse(savedEmergencyFund));
+      if (savedCreditCards) setCreditCards(JSON.parse(savedCreditCards));
+      if (savedInstallments) setInstallments(JSON.parse(savedInstallments));
+      if (savedBenefitCards) setBenefitCards(JSON.parse(savedBenefitCards));
     } catch (e) {
       console.warn("Erro ao ler do LocalStorage, usando mocks:", e);
     }
@@ -196,10 +236,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       localStorage.setItem(STORAGE_KEY_PREFIX + "loans", JSON.stringify(loans));
       localStorage.setItem(STORAGE_KEY_PREFIX + "amortizations", JSON.stringify(amortizations));
       localStorage.setItem(STORAGE_KEY_PREFIX + "emergencyFund", JSON.stringify(emergencyFund));
+      localStorage.setItem(STORAGE_KEY_PREFIX + "creditCards", JSON.stringify(creditCards));
+      localStorage.setItem(STORAGE_KEY_PREFIX + "installments", JSON.stringify(installments));
+      localStorage.setItem(STORAGE_KEY_PREFIX + "benefitCards", JSON.stringify(benefitCards));
     } catch (e) {
       console.error("Erro ao persistir no LocalStorage:", e);
     }
-  }, [isClient, users, currentUserId, incomes, expenses, loans, amortizations, emergencyFund]);
+  }, [isClient, users, currentUserId, incomes, expenses, loans, amortizations, emergencyFund, creditCards, installments, benefitCards]);
 
   const currentUser = useMemo(
     () => users.find((u) => u.id === currentUserId) || users[0],
@@ -607,6 +650,108 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
     });
   };
 
+  // AÇÕES: Cartões de Crédito
+  const addCreditCard = (cardData: Omit<CreditCard, "id">) => {
+    const newCard: CreditCard = {
+      ...cardData,
+      id: "card-" + Date.now(),
+    };
+    setCreditCards((prev) => [...prev, newCard]);
+  };
+
+  const updateCreditCard = (id: string, cardData: Partial<CreditCard>) => {
+    setCreditCards((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, ...cardData } : c))
+    );
+  };
+
+  const deleteCreditCard = (id: string) => {
+    setCreditCards((prev) => prev.filter((c) => c.id !== id));
+    setInstallments((prev) => prev.filter((i) => i.cardId !== id));
+  };
+
+  // AÇÕES: Parcelamentos
+  const addInstallment = (instData: Omit<CreditCardInstallment, "id">) => {
+    const newInst: CreditCardInstallment = {
+      ...instData,
+      id: "inst-" + Date.now(),
+    };
+    setInstallments((prev) => [...prev, newInst]);
+
+    // Abater do limite liberado do cartão se aplicável
+    setCreditCards((prev) =>
+      prev.map((c) => {
+        if (c.id === instData.cardId) {
+          return {
+            ...c,
+            availableLimit: Math.max(0, c.availableLimit - instData.installmentAmount),
+          };
+        }
+        return c;
+      })
+    );
+  };
+
+  const deleteInstallment = (id: string) => {
+    setInstallments((prev) => prev.filter((i) => i.id !== id));
+  };
+
+  // AÇÕES: Cartões de Benefício (VR/VA)
+  const addBenefitCard = (cardData: Omit<BenefitCard, "id">) => {
+    const newCard: BenefitCard = {
+      ...cardData,
+      id: "benefit-" + Date.now(),
+    };
+    setBenefitCards((prev) => [...prev, newCard]);
+  };
+
+  const updateBenefitCardBalance = (id: string, newBalance: number) => {
+    setBenefitCards((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, currentBalance: newBalance } : c))
+    );
+  };
+
+  const deleteBenefitCard = (id: string) => {
+    setBenefitCards((prev) => prev.filter((c) => c.id !== id));
+  };
+
+  // CÁLCULO: Métricas dos Cartões
+  const cardsMetrics = useMemo(() => {
+    const totalCreditLimit = creditCards.reduce((acc, c) => acc + c.totalLimit, 0);
+    const totalAvailableLimit = creditCards.reduce((acc, c) => acc + c.availableLimit, 0);
+    const totalCommittedLimit = Math.max(0, totalCreditLimit - totalAvailableLimit);
+    const totalMonthlyInstallmentsAmount = installments.reduce(
+      (acc, i) => acc + i.installmentAmount,
+      0
+    );
+
+    const totalBenefitBalanceVR = benefitCards
+      .filter((b) => b.type === "VR")
+      .reduce((acc, b) => acc + b.currentBalance, 0);
+
+    const totalBenefitBalanceVA = benefitCards
+      .filter((b) => b.type === "VA")
+      .reduce((acc, b) => acc + b.currentBalance, 0);
+
+    const totalBenefitBalance = totalBenefitBalanceVR + totalBenefitBalanceVA;
+
+    const totalMonthlyBenefitDeposit = benefitCards.reduce(
+      (acc, b) => acc + b.monthlyDeposit,
+      0
+    );
+
+    return {
+      totalCreditLimit,
+      totalAvailableLimit,
+      totalCommittedLimit,
+      totalMonthlyInstallmentsAmount,
+      totalBenefitBalanceVR,
+      totalBenefitBalanceVA,
+      totalBenefitBalance,
+      totalMonthlyBenefitDeposit,
+    };
+  }, [creditCards, installments, benefitCards]);
+
   // Resetar dados para o padrão inicial
   const resetAllData = () => {
     setUsers(INITIAL_USERS);
@@ -616,6 +761,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
     setLoans(INITIAL_LOANS);
     setAmortizations(INITIAL_AMORTIZATIONS);
     setEmergencyFund(INITIAL_EMERGENCY_FUND);
+    setCreditCards(INITIAL_CREDIT_CARDS);
+    setInstallments(INITIAL_INSTALLMENTS);
+    setBenefitCards(INITIAL_BENEFIT_CARDS);
     localStorage.clear();
   };
 
@@ -635,6 +783,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
         loans,
         amortizations,
         emergencyFund,
+        creditCards,
+        installments,
+        benefitCards,
         addExpense,
         deleteExpense,
         toggleFixedExpensePaid,
@@ -643,6 +794,14 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
         amortizeLoan,
         payMonthlyInstallment,
         addEmergencyDeposit,
+        addCreditCard,
+        updateCreditCard,
+        deleteCreditCard,
+        addInstallment,
+        deleteInstallment,
+        addBenefitCard,
+        updateBenefitCardBalance,
+        deleteBenefitCard,
         resetAllData,
         freeWallet,
         benefitsWallet,
@@ -651,6 +810,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
         expenseStats,
         avalanche,
         emergencyFundMetrics,
+        cardsMetrics,
       }}
     >
       {children}

@@ -6,9 +6,12 @@ async function main() {
   console.log("Iniciando seed no banco de dados...");
 
   // Limpar tabelas existentes em cascata
+  await prisma.creditCardInstallment.deleteMany({});
+  await prisma.expense.deleteMany({});
+  await prisma.creditCard.deleteMany({});
+  await prisma.benefitCard.deleteMany({});
   await prisma.loanAmortization.deleteMany({});
   await prisma.emergencyDeposit.deleteMany({});
-  await prisma.expense.deleteMany({});
   await prisma.income.deleteMany({});
   await prisma.loan.deleteMany({});
   await prisma.emergencyFund.deleteMany({});
@@ -393,6 +396,139 @@ async function main() {
       userId: mariana.id,
       notes: "Aporte mensal programado da reserva",
     },
+  });
+
+  // 7. Cadastrar Cartões de Crédito e Parcelamentos
+  const santander = await prisma.creditCard.create({
+    data: {
+      name: "Santander SX",
+      bank: "Santander",
+      color: "#CC0000",
+      lastFourDigits: "8492",
+      totalLimit: 2000.0,
+      availableLimit: 500.0,
+      closingDay: 3,
+      dueDay: 10,
+      userId: lucas.id,
+    },
+  });
+
+  const nubank = await prisma.creditCard.create({
+    data: {
+      name: "Nubank Roxinho",
+      bank: "Nubank",
+      color: "#820AD1",
+      lastFourDigits: "6104",
+      totalLimit: 4000.0,
+      availableLimit: 1400.0,
+      closingDay: 8,
+      dueDay: 15,
+      userId: mariana.id,
+    },
+  });
+
+  // Compras Parceladas do Santander (restante R$ 1.500 em 8x)
+  await prisma.creditCardInstallment.create({
+    data: {
+      cardId: santander.id,
+      description: "Reforma & Eletros Cozinha (Parcelado 8x)",
+      totalAmount: 1500.0,
+      installmentAmount: 187.5,
+      totalInstallments: 8,
+      currentInstallment: 2,
+      category: "HOUSING",
+      purchaseDate: new Date(now.getFullYear(), now.getMonth() - 1, 15),
+      userId: lucas.id,
+    },
+  });
+
+  // Compras Parceladas do Nubank (400 em 5x, 395 em 6x, 1805 em 10x)
+  await prisma.creditCardInstallment.create({
+    data: {
+      cardId: nubank.id,
+      description: "Passagens Aéreas Férias (400 em 5x)",
+      totalAmount: 400.0,
+      installmentAmount: 80.0,
+      totalInstallments: 5,
+      currentInstallment: 2,
+      category: "LEISURE",
+      purchaseDate: new Date(now.getFullYear(), now.getMonth() - 1, 20),
+      userId: mariana.id,
+    },
+  });
+
+  await prisma.creditCardInstallment.create({
+    data: {
+      cardId: nubank.id,
+      description: "Tênis & Vestuário (395 em 6x)",
+      totalAmount: 395.0,
+      installmentAmount: 65.83,
+      totalInstallments: 6,
+      currentInstallment: 1,
+      category: "HEALTH",
+      purchaseDate: new Date(now.getFullYear(), now.getMonth(), 5),
+      userId: mariana.id,
+    },
+  });
+
+  await prisma.creditCardInstallment.create({
+    data: {
+      cardId: nubank.id,
+      description: "Notebook Home Office (1.805 em 10x)",
+      totalAmount: 1805.0,
+      installmentAmount: 180.5,
+      totalInstallments: 10,
+      currentInstallment: 3,
+      category: "OTHER",
+      purchaseDate: new Date(now.getFullYear(), now.getMonth() - 2, 10),
+      userId: mariana.id,
+    },
+  });
+
+  // 8. Cadastrar Cartões de Benefício (VR/VA) do Casal
+  await prisma.benefitCard.createMany({
+    data: [
+      {
+        name: "Flash Benefícios VR",
+        type: "VR",
+        currentBalance: 420.0,
+        monthlyDeposit: 650.0,
+        depositDay: 1,
+        color: "#E06D53",
+        lastFourDigits: "9120",
+        userId: lucas.id,
+      },
+      {
+        name: "Sodexo Alimentação Pass",
+        type: "VA",
+        currentBalance: 310.0,
+        monthlyDeposit: 450.0,
+        depositDay: 1,
+        color: "#7A8B68",
+        lastFourDigits: "3456",
+        userId: lucas.id,
+      },
+      {
+        name: "Alelo Refeição",
+        type: "VR",
+        currentBalance: 380.0,
+        monthlyDeposit: 500.0,
+        depositDay: 5,
+        color: "#D99B52",
+        lastFourDigits: "7721",
+        userId: mariana.id,
+      },
+      {
+        name: "Swile Alimentação",
+        type: "VA",
+        currentBalance: 290.0,
+        monthlyDeposit: 350.0,
+        depositDay: 5,
+        color: "#5B8A72",
+        lastFourDigits: "4412",
+        userId: mariana.id,
+      },
+    ],
   });
 
   console.log("Seed concluído com sucesso!");

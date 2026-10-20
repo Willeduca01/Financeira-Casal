@@ -5,6 +5,9 @@ import {
   INITIAL_LOANS,
   INITIAL_INCOMES,
   INITIAL_EXPENSES,
+  INITIAL_CREDIT_CARDS,
+  INITIAL_INSTALLMENTS,
+  INITIAL_BENEFIT_CARDS,
 } from "@/lib/mock-data";
 
 export async function GET() {
@@ -15,6 +18,11 @@ export async function GET() {
       const loans = await prisma.loan.findMany();
       const incomes = await prisma.income.findMany();
       const expenses = await prisma.expense.findMany();
+      const creditCards = await prisma.creditCard.findMany({
+        include: { installments: true },
+      });
+      const installments = await prisma.creditCardInstallment.findMany();
+      const benefitCards = await prisma.benefitCard.findMany();
 
       return NextResponse.json({
         source: "neon-postgres",
@@ -22,6 +30,9 @@ export async function GET() {
         loans,
         incomes,
         expenses,
+        creditCards,
+        installments,
+        benefitCards,
       });
     }
 
@@ -32,6 +43,9 @@ export async function GET() {
       loans: INITIAL_LOANS,
       incomes: INITIAL_INCOMES,
       expenses: INITIAL_EXPENSES,
+      creditCards: INITIAL_CREDIT_CARDS,
+      installments: INITIAL_INSTALLMENTS,
+      benefitCards: INITIAL_BENEFIT_CARDS,
     });
   } catch (error: any) {
     return NextResponse.json(
