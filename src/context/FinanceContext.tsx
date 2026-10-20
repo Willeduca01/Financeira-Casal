@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useMemo } from "react";
 import bcrypt from "bcryptjs";
+import { signIn, signOut } from "next-auth/react";
 import {
   User,
   CoupleSettings,
@@ -352,12 +353,28 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       localStorage.setItem(STORAGE_KEY_PREFIX + "currentUserId", userId);
     }
 
+    // Estabelecer sessão JWT segura via NextAuth no servidor para proteger as chamadas de API
+    try {
+      signIn("credentials", {
+        redirect: false,
+        email: user.email,
+        password: pin.trim(),
+      }).catch((err: any) => {
+        console.warn("[AUTH] Falha ao sincronizar cookie de sessão NextAuth:", err);
+      });
+    } catch (e) {
+      // Ignorar caso em modo offline
+    }
+
     return { success: true };
   };
 
   const logout = () => {
     setIsAuthenticated(false);
     localStorage.removeItem(STORAGE_KEY_PREFIX + "isAuthenticated");
+    try {
+      signOut({ redirect: false }).catch(() => {});
+    } catch {}
   };
 
   const updateUserPin = (
