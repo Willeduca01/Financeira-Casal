@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
-import { FinanceProvider } from "@/context/FinanceContext";
+import React, { useState, useEffect } from "react";
+import { FinanceProvider, useFinance } from "@/context/FinanceContext";
+import { LoginScreen } from "@/components/auth/LoginScreen";
 import { Sidebar } from "@/components/Sidebar";
 import { Header } from "@/components/Header";
 import { TabType } from "@/components/BottomNav";
@@ -17,6 +18,8 @@ import { NewTransactionModal } from "@/components/modals/NewTransactionModal";
 import { AmortizationModal } from "@/components/modals/AmortizationModal";
 
 function DashboardContent() {
+  const { isAuthenticated } = useFinance();
+  const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isNewTxModalOpen, setIsNewTxModalOpen] = useState(false);
@@ -24,6 +27,24 @@ function DashboardContent() {
   const [selectedAmortizeLoanId, setSelectedAmortizeLoanId] = useState<string | undefined>(
     undefined
   );
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Evitar disparidade SSR / Client por causa do localStorage
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-[#F4EFE6] flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-[#C46D53] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // Se não estiver autenticado, exibe a tela de login/PIN do casal
+  if (!isAuthenticated) {
+    return <LoginScreen />;
+  }
 
   const handleOpenAmortize = (loanId?: string) => {
     setSelectedAmortizeLoanId(loanId);

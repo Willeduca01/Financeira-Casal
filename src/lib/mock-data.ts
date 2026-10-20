@@ -23,6 +23,7 @@ export const INITIAL_USERS: User[] = [
     vrAmount: 650.0,
     vaAmount: 450.0,
     incomeProportion: 58.2,
+    pin: "1234",
   },
   {
     id: "user-mariana",
@@ -35,6 +36,7 @@ export const INITIAL_USERS: User[] = [
     vrAmount: 500.0,
     vaAmount: 350.0,
     incomeProportion: 41.8,
+    pin: "1234",
   },
 ];
 

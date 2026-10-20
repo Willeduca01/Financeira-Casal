@@ -12,7 +12,11 @@ import {
   Calendar,
   Sparkles,
   Menu,
+  Lock,
+  KeyRound,
+  LogOut,
 } from "lucide-react";
+import { ChangePinModal } from "@/components/modals/ChangePinModal";
 
 interface HeaderProps {
   onOpenMobileMenu?: () => void;
@@ -38,6 +42,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMobileMenu }) => {
     currentUser,
     switchUser,
     users,
+    logout,
     selectedMonth,
     selectedYear,
     setSelectedMonth,
@@ -47,6 +52,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMobileMenu }) => {
 
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showConfirmReset, setShowConfirmReset] = useState(false);
+  const [isChangePinModalOpen, setIsChangePinModalOpen] = useState(false);
 
   const handlePrevMonth = () => {
     if (selectedMonth === 0) {
@@ -110,97 +116,138 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMobileMenu }) => {
             </div>
           </div>
 
-          {/* Lado Direito: Avatares do Casal Sobrepostos (-space-x-2) */}
-          <div className="relative">
+          {/* Lado Direito: Avatares do Casal + Botão de Bloqueio */}
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => setShowUserDropdown(!showUserDropdown)}
-              className="flex items-center -space-x-2.5 p-1 bg-white/15 hover:bg-white/25 rounded-full transition-all backdrop-blur-sm border border-white/20 shadow-sm group"
-              title="Alternar usuário do casal"
-              aria-label="Alternar perfil ativo"
+              onClick={logout}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-white/15 hover:bg-white/25 text-[#FBF9F5] rounded-full text-xs font-medium transition-all backdrop-blur-sm border border-white/20 shadow-sm"
+              title="Bloquear aplicativo com PIN"
             >
-              {users.map((u) => {
-                const isActive = u.id === currentUser.id;
-                return (
-                  <div key={u.id} className="relative">
-                    <img
-                      src={u.avatar}
-                      alt={u.name}
-                      className={`w-8 h-8 rounded-full object-cover ring-2 transition-transform ${
-                        isActive
-                          ? "ring-[#FBF9F5] scale-105 z-10 shadow-md"
-                          : "ring-[#C46D53] opacity-85 hover:opacity-100"
-                      }`}
-                    />
-                    {isActive && (
-                      <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-[#7A8B68] rounded-full ring-2 ring-[#FBF9F5]" />
-                    )}
-                  </div>
-                );
-              })}
+              <Lock size={13} />
+              <span>Bloquear</span>
             </button>
 
-            {/* Dropdown de Alternância de Perfil */}
-            {showUserDropdown && (
-              <div className="absolute right-0 mt-2.5 w-60 bg-[#FBF9F5] border border-[#E6DEC8] rounded-[24px] p-2.5 shadow-[0_12px_40px_rgba(61,44,30,0.15)] z-50 text-[#2C221E] animate-in fade-in zoom-in-95 duration-150">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[#786B5E] px-2.5 py-1">
-                  Quem está usando agora?
-                </p>
-
-                <div className="space-y-1 mt-1">
-                  {users.map((user) => {
-                    const isSelected = user.id === currentUser.id;
-                    return (
-                      <button
-                        key={user.id}
-                        onClick={() => {
-                          switchUser(user.id);
-                          setShowUserDropdown(false);
-                        }}
-                        className={`w-full flex items-center justify-between p-2 rounded-2xl text-left transition-all ${
-                          isSelected
-                            ? "bg-[#C46D53]/10 text-[#C46D53] font-bold border border-[#C46D53]/30"
-                            : "hover:bg-[#F4EFE6] text-[#2C221E]"
+            <div className="relative">
+              <button
+                onClick={() => setShowUserDropdown(!showUserDropdown)}
+                className="flex items-center -space-x-2.5 p-1 bg-white/15 hover:bg-white/25 rounded-full transition-all backdrop-blur-sm border border-white/20 shadow-sm group"
+                title="Perfil ativo & configurações"
+                aria-label="Perfil ativo e opções"
+              >
+                {users.map((u) => {
+                  const isActive = u.id === currentUser.id;
+                  return (
+                    <div key={u.id} className="relative">
+                      <img
+                        src={u.avatar}
+                        alt={u.name}
+                        className={`w-8 h-8 rounded-full object-cover ring-2 transition-transform ${
+                          isActive
+                            ? "ring-[#FBF9F5] scale-105 z-10 shadow-md"
+                            : "ring-[#C46D53] opacity-85 hover:opacity-100"
                         }`}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <img
-                            src={user.avatar}
-                            alt={user.name}
-                            className="w-8 h-8 rounded-full object-cover ring-1 ring-[#E6DEC8]"
-                          />
-                          <div>
-                            <p className="text-xs font-bold leading-tight">
-                              {user.name}
-                            </p>
-                            <p className="text-[10px] text-[#786B5E]">
-                              Líquido: {formatBRL(user.salaryNet)}
-                            </p>
-                          </div>
-                        </div>
-                        {isSelected && (
-                          <div className="w-5 h-5 rounded-full bg-[#C46D53] text-[#FBF9F5] flex items-center justify-center">
-                            <Check size={12} strokeWidth={3} />
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+                      />
+                      {isActive && (
+                        <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-[#7A8B68] rounded-full ring-2 ring-[#FBF9F5]" />
+                      )}
+                    </div>
+                  );
+                })}
+              </button>
 
-                <div className="border-t border-[#E6DEC8] mt-2 pt-2">
-                  <button
-                    onClick={() => {
-                      setShowUserDropdown(false);
-                      setShowConfirmReset(true);
-                    }}
-                    className="w-full flex items-center gap-2 p-1.5 px-2 rounded-xl text-[11px] text-[#B05B42] hover:bg-[#C46D53]/10 transition-colors font-medium"
-                  >
-                    <RotateCcw size={12} />
-                    Restaurar dados de teste
-                  </button>
+              {/* Dropdown de Alternância de Perfil & Segurança */}
+              {showUserDropdown && (
+                <div className="absolute right-0 mt-2.5 w-64 bg-[#FBF9F5] border border-[#E6DEC8] rounded-[24px] p-2.5 shadow-[0_12px_40px_rgba(61,44,30,0.15)] z-50 text-[#2C221E] animate-in fade-in zoom-in-95 duration-150">
+                  <div className="px-2.5 py-1 flex items-center justify-between">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#786B5E]">
+                      Quem está usando agora?
+                    </p>
+                    <span className="text-[10px] font-semibold text-[#7A8B68] bg-[#7A8B68]/10 px-2 py-0.5 rounded-full">
+                      Autenticado
+                    </span>
+                  </div>
+
+                  <div className="space-y-1 mt-1">
+                    {users.map((user) => {
+                      const isSelected = user.id === currentUser.id;
+                      return (
+                        <button
+                          key={user.id}
+                          onClick={() => {
+                            switchUser(user.id);
+                            setShowUserDropdown(false);
+                          }}
+                          className={`w-full flex items-center justify-between p-2 rounded-2xl text-left transition-all ${
+                            isSelected
+                              ? "bg-[#C46D53]/10 text-[#C46D53] font-bold border border-[#C46D53]/30"
+                              : "hover:bg-[#F4EFE6] text-[#2C221E]"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <img
+                              src={user.avatar}
+                              alt={user.name}
+                              className="w-8 h-8 rounded-full object-cover ring-1 ring-[#E6DEC8]"
+                            />
+                            <div>
+                              <p className="text-xs font-bold leading-tight">
+                                {user.name}
+                              </p>
+                              <p className="text-[10px] text-[#786B5E]">
+                                Líquido: {formatBRL(user.salaryNet)}
+                              </p>
+                            </div>
+                          </div>
+                          {isSelected && (
+                            <div className="w-5 h-5 rounded-full bg-[#C46D53] text-[#FBF9F5] flex items-center justify-center">
+                              <Check size={12} strokeWidth={3} />
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Segurança e Opções de Conta */}
+                  <div className="border-t border-[#E6DEC8] mt-2 pt-2 space-y-1">
+                    <button
+                      onClick={() => {
+                        setShowUserDropdown(false);
+                        setIsChangePinModalOpen(true);
+                      }}
+                      className="w-full flex items-center gap-2 p-2 rounded-xl text-xs text-[#2C221E] hover:bg-[#F4EFE6] transition-colors font-medium text-left"
+                    >
+                      <KeyRound size={14} className="text-[#C46D53]" />
+                      <span>Alterar meu PIN (4 dígitos)</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setShowUserDropdown(false);
+                        logout();
+                      }}
+                      className="w-full flex items-center gap-2 p-2 rounded-xl text-xs text-[#786B5E] hover:bg-[#C46D53]/10 hover:text-[#C46D53] transition-colors font-medium text-left"
+                    >
+                      <LogOut size={14} />
+                      <span>Bloquear / Trocar perfil</span>
+                    </button>
+                  </div>
+
+                  <div className="border-t border-[#E6DEC8] mt-1 pt-1">
+                    <button
+                      onClick={() => {
+                        setShowUserDropdown(false);
+                        setShowConfirmReset(true);
+                      }}
+                      className="w-full flex items-center gap-2 p-1.5 px-2 rounded-xl text-[11px] text-[#B05B42] hover:bg-[#C46D53]/10 transition-colors font-medium"
+                    >
+                      <RotateCcw size={12} />
+                      Restaurar dados de teste
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
@@ -266,6 +313,12 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMobileMenu }) => {
           </div>
         </div>
       )}
+
+      {/* Modal de Alteração de PIN do Integrante Ativo */}
+      <ChangePinModal
+        isOpen={isChangePinModalOpen}
+        onClose={() => setIsChangePinModalOpen(false)}
+      />
     </header>
   );
 };

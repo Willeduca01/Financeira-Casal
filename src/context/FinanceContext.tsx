@@ -31,6 +31,12 @@ import {
 import { sortLoansByAvalanche, estimateInterestSavings } from "@/lib/utils";
 
 interface FinanceContextType {
+  // Autenticação & Perfil do Casal
+  isAuthenticated: boolean;
+  login: (userId: string, pin: string, remember?: boolean) => { success: boolean; message?: string };
+  logout: () => void;
+  updateUserPin: (userId: string, oldPin: string, newPin: string) => { success: boolean; message?: string };
+
   // Usuário Ativo
   currentUser: User;
   switchUser: (userId: string) => void;
@@ -177,6 +183,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   // Carregamento com suporte a LocalStorage e Mock inicial
   const [isClient, setIsClient] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [users, setUsers] = useState<User[]>(INITIAL_USERS);
   const [currentUserId, setCurrentUserId] = useState<string>("user-lucas");
   const [coupleSettings, setCoupleSettings] = useState<CoupleSettings>(INITIAL_COUPLE_SETTINGS);
@@ -200,6 +207,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
     setSelectedMonth(now.getMonth());
     setSelectedYear(now.getFullYear());
     try {
+      const savedAuth = localStorage.getItem(STORAGE_KEY_PREFIX + "isAuthenticated");
       const savedUsers = localStorage.getItem(STORAGE_KEY_PREFIX + "users");
       const savedCurrentUserId = localStorage.getItem(STORAGE_KEY_PREFIX + "currentUserId");
       const savedIncomes = localStorage.getItem(STORAGE_KEY_PREFIX + "incomes");
@@ -211,6 +219,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       const savedInstallments = localStorage.getItem(STORAGE_KEY_PREFIX + "installments");
       const savedBenefitCards = localStorage.getItem(STORAGE_KEY_PREFIX + "benefitCards");
 
+      if (savedAuth === "true") setIsAuthenticated(true);
       if (savedUsers) setUsers(JSON.parse(savedUsers));
       if (savedCurrentUserId) setCurrentUserId(savedCurrentUserId);
       if (savedIncomes) setIncomes(JSON.parse(savedIncomes));
@@ -252,6 +261,65 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const switchUser = (userId: string) => {
     setCurrentUserId(userId);
+    if (isClient) {
+      localStorage.setItem(STORAGE_KEY_PREFIX + "currentUserId", userId);
+    }
+  };
+
+  // Autenticação do Integrante
+  const login = (
+    userId: string,
+    pin: string,
+    remember: boolean = true
+  ): { success: boolean; message?: string } => {
+    const user = users.find((u) => u.id === userId);
+    if (!user) {
+      return { success: false, message: "Integrante não encontrado." };
+    }
+
+    const expectedPin = user.pin || "1234";
+    if (pin.trim() !== expectedPin) {
+      return { success: false, message: "PIN incorreto. Tente novamente." };
+    }
+
+    setCurrentUserId(userId);
+    setIsAuthenticated(true);
+
+    if (remember) {
+      localStorage.setItem(STORAGE_KEY_PREFIX + "isAuthenticated", "true");
+      localStorage.setItem(STORAGE_KEY_PREFIX + "currentUserId", userId);
+    }
+
+    return { success: true };
+  };
+
+  const logout = () => {
+    setIsAuthenticated(false);
+    localStorage.removeItem(STORAGE_KEY_PREFIX + "isAuthenticated");
+  };
+
+  const updateUserPin = (
+    userId: string,
+    oldPin: string,
+    newPin: string
+  ): { success: boolean; message?: string } => {
+    const user = users.find((u) => u.id === userId);
+    if (!user) return { success: false, message: "Integrante não encontrado." };
+
+    const currentPin = user.pin || "1234";
+    if (oldPin !== currentPin) {
+      return { success: false, message: "PIN atual incorreto." };
+    }
+
+    if (newPin.trim().length < 4) {
+      return { success: false, message: "O novo PIN deve ter pelo menos 4 dígitos." };
+    }
+
+    setUsers((prev) =>
+      prev.map((u) => (u.id === userId ? { ...u, pin: newPin.trim() } : u))
+    );
+
+    return { success: true, message: "PIN alterado com sucesso!" };
   };
 
   // Filtragem de movimentações do mês/ano selecionado
@@ -880,6 +948,10 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
         switchUser,
         users,
         coupleSettings,
+        isAuthenticated,
+        login,
+        logout,
+        updateUserPin,
         selectedMonth,
         selectedYear,
         setSelectedMonth,
