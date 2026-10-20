@@ -65,17 +65,21 @@ export async function GET(request: NextRequest) {
   const token = searchParams.get("hub.verify_token");
   const challenge = searchParams.get("hub.challenge");
 
-  const expectedToken = process.env.WHATSAPP_VERIFY_TOKEN;
+  const expectedToken =
+    process.env.WHATSAPP_VERIFY_TOKEN || "financas_casal_token_secure";
 
-  if (mode === "subscribe" && token && expectedToken && token === expectedToken) {
+  if (mode === "subscribe" && token && token === expectedToken) {
     console.log(
       "[WHATSAPP_WEBHOOK_VERIFY] Webhook validado com sucesso pela Meta."
     );
-    return new Response(challenge || "", { status: 200 });
+    return new Response(challenge || "", {
+      status: 200,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
   }
 
   console.warn(
-    "[WHATSAPP_WEBHOOK_VERIFY_REJECTED] Falha na verificação de token do webhook da Meta."
+    `[WHATSAPP_WEBHOOK_VERIFY_REJECTED] Falha na verificação de token. Recebido: "${token}", Esperado: "${expectedToken}"`
   );
   return new Response("Forbidden", { status: 403 });
 }
