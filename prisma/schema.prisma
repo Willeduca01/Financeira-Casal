@@ -123,6 +123,9 @@ model Income {
   user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   createdAt   DateTime       @default(now())
+  
+  @@index([userId])
+  @@index([receivedAt(sort: Desc)])
 }
 
 model Expense {
@@ -147,6 +150,13 @@ model Expense {
   user                   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   createdAt              DateTime        @default(now())
+  
+  @@index([date(sort: Desc)])
+  @@index([expenseType, date(sort: Desc)])
+  @@index([category])
+  @@index([userId])
+  @@index([creditCardId])
+  @@index([loanId])
 }
 
 model Loan {
@@ -168,6 +178,9 @@ model Loan {
   
   createdAt               DateTime           @default(now())
   updatedAt               DateTime           @updatedAt
+  
+  @@index([monthlyInterestRate(sort: Desc)])
+  @@index([status])
 }
 
 model LoanAmortization {
@@ -186,6 +199,10 @@ model LoanAmortization {
   userId                   String
   user                     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   notes                    String?
+  
+  @@index([loanId])
+  @@index([userId])
+  @@index([date(sort: Desc)])
 }
 
 model EmergencyFund {
@@ -209,6 +226,9 @@ model EmergencyDeposit {
   userId    String
   user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   notes     String?
+  
+  @@index([fundId])
+  @@index([userId])
 }
 
 model CreditCard {
@@ -230,6 +250,8 @@ model CreditCard {
   
   createdAt       DateTime                @default(now())
   updatedAt       DateTime                @updatedAt
+  
+  @@index([userId])
 }
 
 model CreditCardInstallment {
@@ -249,6 +271,9 @@ model CreditCardInstallment {
   
   createdAt           DateTime        @default(now())
   updatedAt           DateTime        @updatedAt
+  
+  @@index([cardId])
+  @@index([userId])
 }
 
 model BenefitCard {
@@ -266,5 +291,7 @@ model BenefitCard {
   
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
+  
+  @@index([userId])
 }
 

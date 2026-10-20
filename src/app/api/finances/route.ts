@@ -37,8 +37,13 @@ async function getAuthenticatedUserSession() {
 
 /**
  * GET: Retorna dados financeiros consolidados do casal
+ * Otimizado com:
+ * 1. Execução paralela simultânea de todas as consultas com Promise.all (TTFB reduzido)
+ * 2. Suporte a query params opcionais: limit, startDate, endDate, category, type
+ * 3. Cabeçalhos de controle de cache privado e Server-Timing
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const startTime = performance.now();
   try {
     const authUser = await getAuthenticatedUserSession();
     if (!authUser) {
@@ -53,24 +58,111 @@ export async function GET() {
       );
     }
 
-    // Verificar se o usuário autenticado existe no banco
-    const user = await prisma.user.findUnique({
-      where: { id: authUser.id },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        avatar: true,
-        role: true,
-        salaryGross: true,
-        salaryNet: true,
-        vrAmount: true,
-        vaAmount: true,
-        incomeProportion: true,
-      },
-    });
+    // Suporte a query parameters opcionais
+    const { searchParams } = new URL(request.url);
+    const limitParam = searchParams.get("limit");
+    const startDateParam = searchParams.get("startDate");
+    const endDateParam = searchParams.get("endDate");
+    const categoryParam = searchParams.get("category");
+    const typeParam = searchParams.get("type") || searchParams.get("expenseType");
 
-    if (!user) {
+    const limitNumber = limitParam ? Math.min(Math.max(parseInt(limitParam, 10) || 0, 1), 500) : undefined;
+
+    // Filtros dinâmicos para despesas/transações
+    const expenseWhere: Record<string, any> = {};
+
+    if (startDateParam || endDateParam) {
+      expenseWhere.date = {};
+      if (startDateParam) {
+        const start = new Date(startDateParam);
+        if (!isNaN(start.getTime())) {
+          expenseWhere.date.gte = start;
+        }
+      }
+      if (endDateParam) {
+        const end = new Date(endDateParam);
+        if (!isNaN(end.getTime())) {
+          expenseWhere.date.lte = end;
+        }
+      }
+    }
+
+    if (categoryParam) {
+      expenseWhere.category = categoryParam;
+    }
+
+    if (typeParam) {
+      expenseWhere.expenseType = typeParam;
+    }
+
+    // Execução paralela de todas as consultas independentes via Promise.all
+    const [
+      currentUser,
+      users,
+      loans,
+      incomes,
+      expenses,
+      creditCards,
+      installments,
+      benefitCards,
+      coupleSettings,
+    ] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: authUser.id },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          avatar: true,
+          role: true,
+          salaryGross: true,
+          salaryNet: true,
+          vrAmount: true,
+          vaAmount: true,
+          incomeProportion: true,
+        },
+      }),
+      prisma.user.findMany({
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          avatar: true,
+          role: true,
+          salaryGross: true,
+          salaryNet: true,
+          vrAmount: true,
+          vaAmount: true,
+          incomeProportion: true,
+          pinHash: true,
+        },
+      }),
+      prisma.loan.findMany({
+        include: { amortizations: true },
+        orderBy: { monthlyInterestRate: "desc" }, // Otimizado com @@index([monthlyInterestRate(sort: Desc)])
+      }),
+      prisma.income.findMany({
+        orderBy: { receivedAt: "desc" }, // Otimizado com @@index([receivedAt(sort: Desc)])
+      }),
+      prisma.expense.findMany({
+        where: Object.keys(expenseWhere).length > 0 ? expenseWhere : undefined,
+        orderBy: { date: "desc" }, // Otimizado com @@index([date(sort: Desc)])
+        take: limitNumber,
+      }),
+      prisma.creditCard.findMany({
+        include: { installments: true },
+        orderBy: { name: "asc" },
+      }),
+      prisma.creditCardInstallment.findMany({
+        orderBy: { purchaseDate: "desc" },
+      }),
+      prisma.benefitCard.findMany({
+        orderBy: { name: "asc" },
+      }),
+      prisma.coupleSettings.findFirst(),
+    ]);
+
+    if (!currentUser) {
       return NextResponse.json(
         {
           error: "Usuário não localizado",
@@ -81,50 +173,30 @@ export async function GET() {
       );
     }
 
-    // Consulta do Pote Único do Casal
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        avatar: true,
-        role: true,
-        salaryGross: true,
-        salaryNet: true,
-        vrAmount: true,
-        vaAmount: true,
-        incomeProportion: true,
-        pinHash: true,
+    const durationMs = (performance.now() - startTime).toFixed(1);
+
+    return NextResponse.json(
+      {
+        source: "neon-postgres",
+        authenticatedUserId: authUser.id,
+        users,
+        currentUser,
+        loans,
+        incomes,
+        expenses,
+        creditCards,
+        installments,
+        benefitCards,
+        coupleSettings,
       },
-    });
-
-    const loans = await prisma.loan.findMany({
-      include: { amortizations: true },
-    });
-    const incomes = await prisma.income.findMany();
-    const expenses = await prisma.expense.findMany({
-      orderBy: { date: "desc" },
-    });
-    const creditCards = await prisma.creditCard.findMany({
-      include: { installments: true },
-    });
-    const installments = await prisma.creditCardInstallment.findMany();
-    const benefitCards = await prisma.benefitCard.findMany();
-    const coupleSettings = await prisma.coupleSettings.findFirst();
-
-    return NextResponse.json({
-      source: "neon-postgres",
-      authenticatedUserId: authUser.id,
-      users,
-      currentUser: user,
-      loans,
-      incomes,
-      expenses,
-      creditCards,
-      installments,
-      benefitCards,
-      coupleSettings,
-    });
+      {
+        status: 200,
+        headers: {
+          "Cache-Control": "private, no-cache, no-store, must-revalidate",
+          "Server-Timing": `db;dur=${durationMs};desc="Parallel Neon DB Queries"`,
+        },
+      }
+    );
   } catch (error) {
     console.error("[API_FINANCES_GET_ERROR]", error);
     return NextResponse.json(
