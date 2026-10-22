@@ -217,7 +217,7 @@ export async function POST(request: NextRequest) {
           creditCards[0];
 
         const targetUserId =
-          matchedCard?.userId || senderUser?.id || "user-lucas";
+          matchedCard?.userId || senderUser?.id || allUsers[0]?.id;
 
         if (parsed.installments > 1 && matchedCard) {
           // Compra Parcelada no Cartão de Crédito
@@ -279,7 +279,7 @@ export async function POST(request: NextRequest) {
           benefitCards[0];
 
         const targetUserId =
-          matchedBenefit?.userId || senderUser?.id || "user-lucas";
+          matchedBenefit?.userId || senderUser?.id || allUsers[0]?.id;
         const paymentMethod = matchedBenefit?.type === "VA" ? "VA" : "VR";
 
         await prisma.expense.create({
@@ -306,7 +306,7 @@ export async function POST(request: NextRequest) {
         }
       } else {
         // Débito / Pix / Saldo Livre
-        const targetUserId = senderUser?.id || "user-lucas";
+        const targetUserId = senderUser?.id || allUsers[0]?.id;
 
         await prisma.expense.create({
           data: {
@@ -322,7 +322,7 @@ export async function POST(request: NextRequest) {
         });
       }
     } else if (parsed.intent === "register_income" && parsed.amount > 0) {
-      const targetUserId = senderUser?.id || "user-lucas";
+      const targetUserId = senderUser?.id || allUsers[0]?.id;
 
       await prisma.income.create({
         data: {

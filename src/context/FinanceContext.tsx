@@ -194,7 +194,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [users, setUsers] = useState<User[]>(INITIAL_USERS);
-  const [currentUserId, setCurrentUserId] = useState<string>("user-lucas");
+  const [currentUserId, setCurrentUserId] = useState<string>("cmvgv5a7p0000uai46r748p2a");
   const [coupleSettings, setCoupleSettings] = useState<CoupleSettings>(INITIAL_COUPLE_SETTINGS);
 
   const [selectedMonth, setSelectedMonth] = useState<number>(9); // Outubro
@@ -213,7 +213,12 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
   const refreshFromBackend = useCallback(async () => {
     try {
       setIsSyncing(true);
-      const res = await fetch("/api/finances", { cache: "no-store" });
+      const res = await fetch("/api/finances", {
+        cache: "no-store",
+        headers: {
+          "x-couple-user-id": currentUserId,
+        },
+      });
       if (!res.ok) return;
       const data = await res.json();
 
@@ -232,21 +237,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
         if (data.installments !== undefined) setInstallments(data.installments);
         if (data.benefitCards !== undefined) setBenefitCards(data.benefitCards);
         if (data.emergencyFund !== undefined) setEmergencyFund(data.emergencyFund);
-      } else {
-        // Se a sessão ainda não está logada no servidor, manter listas transacionais limpas
-        setLoans([]);
-        setExpenses([]);
-        setIncomes([]);
-        setCreditCards([]);
-        setInstallments([]);
-        setBenefitCards([]);
       }
     } catch (err) {
       console.warn("[SYNC] Erro ao sincronizar com banco em nuvem:", err);
     } finally {
       setIsSyncing(false);
     }
-  }, []);
+  }, [currentUserId]);
 
   // Inicialização no cliente
   useEffect(() => {
@@ -347,11 +344,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       try {
         const res = await execute();
         if (!res.ok) {
-          if (res.status === 401) {
-            // Em ambiente de teste/mock local, mantemos a persistência local
-            return;
-          }
-          throw new Error(`HTTP ${res.status}`);
+          const errText = await res.text().catch(() => "");
+          console.error(`[SYNC_ERROR] Falha na sincronização (${res.status}):`, errText);
+          throw new Error(`HTTP ${res.status}: ${errText}`);
         }
         const json = await res.json();
         if (onSuccess && json?.data) {
@@ -617,12 +612,15 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
     const totalGross = filteredIncomes.reduce((sum, inc) => sum + inc.amountGross, 0);
     const totalNet = filteredIncomes.reduce((sum, inc) => sum + inc.amountNet, 0);
 
+    const user1Id = users[0]?.id;
+    const user2Id = users[1]?.id;
+
     const lucasNet = filteredIncomes
-      .filter((inc) => inc.userId === "user-lucas")
+      .filter((inc) => inc.userId === user1Id || inc.userId === "user-lucas")
       .reduce((sum, inc) => sum + inc.amountNet, 0);
 
     const marianaNet = filteredIncomes
-      .filter((inc) => inc.userId === "user-mariana")
+      .filter((inc) => inc.userId === user2Id || inc.userId === "user-mariana")
       .reduce((sum, inc) => sum + inc.amountNet, 0);
 
     const totalNetCombined = lucasNet + marianaNet;
@@ -639,7 +637,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       lucasProportion: Math.round(lucasProportion * 10) / 10,
       marianaProportion: Math.round(marianaProportion * 10) / 10,
     };
-  }, [filteredIncomes]);
+  }, [filteredIncomes, users]);
 
   // CÁLCULOS: 5. Despesas por Tipo e Rastreabilidade
   const expenseStats = useMemo(() => {
@@ -657,12 +655,15 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
 
     const totalGeneral = totalFixed + totalLoans + totalVariable;
 
+    const user1Id = users[0]?.id;
+    const user2Id = users[1]?.id;
+
     const lucasSpent = filteredExpenses
-      .filter((exp) => exp.userId === "user-lucas")
+      .filter((exp) => exp.userId === user1Id || exp.userId === "user-lucas")
       .reduce((sum, exp) => sum + exp.amount, 0);
 
     const marianaSpent = filteredExpenses
-      .filter((exp) => exp.userId === "user-mariana")
+      .filter((exp) => exp.userId === user2Id || exp.userId === "user-mariana")
       .reduce((sum, exp) => sum + exp.amount, 0);
 
     const lucasSpentPercent = totalGeneral > 0 ? (lucasSpent / totalGeneral) * 100 : 50;
@@ -679,7 +680,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       lucasSpentPercent: Math.round(lucasSpentPercent * 10) / 10,
       marianaSpentPercent: Math.round(marianaSpentPercent * 10) / 10,
     };
-  }, [filteredExpenses]);
+  }, [filteredExpenses, users]);
 
   // CÁLCULOS: 6. Motor Método Avalanche (Ordenação pela maior taxa de juros)
   const avalanche = useMemo(() => {
@@ -1501,7 +1502,10 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
         () =>
           fetch("/api/finances", {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              "x-couple-user-id": userId,
+            },
             body: JSON.stringify({
               entity: "user",
               id: userId,
@@ -1526,7 +1530,10 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
         () =>
           fetch("/api/finances", {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              "x-couple-user-id": currentUserId,
+            },
             body: JSON.stringify({
               entity: "coupleSettings",
               id: "default",
@@ -1538,7 +1545,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
         }
       );
     },
-    [coupleSettings, syncWithBackend]
+    [coupleSettings, currentUserId, syncWithBackend]
   );
 
   // Limpeza de todos os dados transacionais (começar do zero com dados reais)

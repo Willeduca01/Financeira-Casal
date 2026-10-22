@@ -34,9 +34,9 @@ export function assertNoProductionMockFallback(dataContext: string) {
 
 export const INITIAL_USERS: User[] = [
   {
-    id: "user-lucas",
-    name: "Lucas Silva",
-    email: "lucas@casal.com",
+    id: "cmvgv5a7p0000uai46r748p2a",
+    name: "William Santos",
+    email: "william@casal.com",
     avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80",
     role: "PARTNER",
     salaryGross: 0,
@@ -48,9 +48,9 @@ export const INITIAL_USERS: User[] = [
     pin: DEFAULT_DEMO_PIN_HASH,
   },
   {
-    id: "user-mariana",
-    name: "Mariana Costa",
-    email: "mariana@casal.com",
+    id: "cmvgv5ag40001uai4go52d5h3",
+    name: "Laura Xavier",
+    email: "laura@casal.com",
     avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80",
     role: "PARTNER",
     salaryGross: 0,
@@ -64,7 +64,7 @@ export const INITIAL_USERS: User[] = [
 ];
 
 export const INITIAL_COUPLE_SETTINGS: CoupleSettings = {
-  coupleName: "Finanças do Casal",
+  coupleName: "Laura & William",
   emergencyFundMonthsTarget: 6,
   user1SalaryProportion: 50.0,
   user2SalaryProportion: 50.0,

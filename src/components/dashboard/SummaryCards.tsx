@@ -23,7 +23,11 @@ export const SummaryCards: React.FC = React.memo(() => {
     incomeStats,
     expenseStats,
     emergencyFundMetrics,
+    users,
   } = useFinance();
+
+  const partner1Name = users[0]?.name ? users[0].name.split(" ")[0] : "Parceiro 1";
+  const partner2Name = users[1]?.name ? users[1].name.split(" ")[0] : "Parceiro 2";
 
   const formatted = useMemo(
     () => ({
@@ -233,19 +237,19 @@ export const SummaryCards: React.FC = React.memo(() => {
         {/* Proporções Salariais */}
         <div className="pt-3 mt-2 border-t border-[#E6DEC8] space-y-1.5">
           <div className="flex justify-between text-[11px] text-[#786B5E]">
-            <span>Lucas ({incomeStats.lucasProportion}%)</span>
-            <span>Mariana ({incomeStats.marianaProportion}%)</span>
+            <span>{partner1Name} ({incomeStats.lucasProportion}%)</span>
+            <span>{partner2Name} ({incomeStats.marianaProportion}%)</span>
           </div>
           <div className="w-full bg-[#E6DEC8] rounded-full h-2 flex overflow-hidden">
             <div
               className="bg-[#7A8B68] h-full transition-all"
               style={{ width: `${incomeStats.lucasProportion}%` }}
-              title={`Lucas: ${incomeStats.lucasProportion}%`}
+              title={`${partner1Name}: ${incomeStats.lucasProportion}%`}
             />
             <div
               className="bg-[#C46D53] h-full transition-all"
               style={{ width: `${incomeStats.marianaProportion}%` }}
-              title={`Mariana: ${incomeStats.marianaProportion}%`}
+              title={`${partner2Name}: ${incomeStats.marianaProportion}%`}
             />
           </div>
         </div>

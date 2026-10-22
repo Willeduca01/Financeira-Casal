@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useFinance } from "@/context/FinanceContext";
 import { User, CoupleSettings } from "@/types";
 import { formatBRL } from "@/lib/utils";
@@ -41,9 +41,10 @@ interface UserEditFormProps {
   user: User;
   onSave: (updated: Partial<User>) => Promise<void>;
   partnerName: string;
+  cardNumber?: number;
 }
 
-const UserEditCard: React.FC<UserEditFormProps> = ({ user, onSave, partnerName }) => {
+const UserEditCard: React.FC<UserEditFormProps> = ({ user, onSave, partnerName, cardNumber = 1 }) => {
   const [name, setName] = useState(user.name);
   const [email, setEmail] = useState(user.email);
   const [avatar, setAvatar] = useState(user.avatar || "");
@@ -56,6 +57,16 @@ const UserEditCard: React.FC<UserEditFormProps> = ({ user, onSave, partnerName }
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setName(user.name);
+    setEmail(user.email);
+    setAvatar(user.avatar || "");
+    setSalaryNet(user.salaryNet.toString());
+    setSalaryGross(user.salaryGross.toString());
+    setVrAmount(user.vrAmount.toString());
+    setVaAmount(user.vaAmount.toString());
+  }, [user]);
 
   // Manipular upload local de imagem (converte para Base64 comprimida)
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -133,7 +144,7 @@ const UserEditCard: React.FC<UserEditFormProps> = ({ user, onSave, partnerName }
       <div className="flex items-center justify-between pb-3 border-b border-[#E6DEC8]">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-[#C46D53]/15 text-[#C46D53] flex items-center justify-center font-bold text-xs">
-            {user.id.includes("1") || user.id.includes("lucas") ? "1" : "2"}
+            {cardNumber}
           </div>
           <div>
             <h3 className="text-base font-serif font-black text-[#2C221E] leading-tight">
@@ -389,6 +400,11 @@ export const SettingsView: React.FC = () => {
   const [showClearConfirmModal, setShowClearConfirmModal] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
 
+  useEffect(() => {
+    setCoupleName(coupleSettings.coupleName);
+    setMonthsTarget(coupleSettings.emergencyFundMonthsTarget.toString());
+  }, [coupleSettings]);
+
   const handleSaveCoupleSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSavingCouple(true);
@@ -467,6 +483,7 @@ export const SettingsView: React.FC = () => {
             <UserEditCard
               key={user.id}
               user={user}
+              cardNumber={idx + 1}
               partnerName={users[idx === 0 ? 1 : 0]?.name || "Parceiro"}
               onSave={(updatedData) => updateUserProfile(user.id, updatedData)}
             />

@@ -60,26 +60,26 @@ export const authOptions: any = {
         }
 
         // Fallback apenas para desenvolvimento local se banco não estiver conectado
-        const isLucas = normalizedEmail.includes("lucas");
-        const isMariana = normalizedEmail.includes("mariana");
-        if (!isLucas && !isMariana) return null;
+        const isUser1 = normalizedEmail.includes("william") || normalizedEmail.includes("lucas");
+        const isUser2 = normalizedEmail.includes("laura") || normalizedEmail.includes("mariana");
+        if (!isUser1 && !isUser2) return null;
 
         const isValidDevPin = await bcrypt.compare(credentials.password, DEV_FALLBACK_PIN_HASH);
         if (!isValidDevPin) return null;
 
-        if (isLucas) {
+        if (isUser1) {
           return {
-            id: "user-lucas",
-            name: "Lucas Silva",
-            email: "lucas@casal.com",
+            id: "cmvgv5a7p0000uai46r748p2a",
+            name: "William Santos",
+            email: "william@casal.com",
             image: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80",
           };
         }
 
         return {
-          id: "user-mariana",
-          name: "Mariana Costa",
-          email: "mariana@casal.com",
+          id: "cmvgv5ag40001uai4go52d5h3",
+          name: "Laura Xavier",
+          email: "laura@casal.com",
           image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80",
         };
       },

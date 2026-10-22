@@ -21,7 +21,10 @@ import { PieChart as PieIcon, Users } from "lucide-react";
 const EARTHY_PALETTE = ["#C46D53", "#7A8B68", "#D99B52", "#8C6D53", "#A3B18A", "#E07A5F"];
 
 export const ChartsSection: React.FC = () => {
-  const { expenses, incomeStats, expenseStats } = useFinance();
+  const { expenses, incomeStats, expenseStats, users } = useFinance();
+
+  const partner1FirstName = users[0]?.name ? users[0].name.split(" ")[0] : "Parceiro 1";
+  const partner2FirstName = users[1]?.name ? users[1].name.split(" ")[0] : "Parceiro 2";
 
   // 1. Dados para o gráfico de rosca: Gastos Variáveis por Subcategoria
   const variableExpensesData = useMemo(() => {
@@ -46,21 +49,21 @@ export const ChartsSection: React.FC = () => {
     return items.sort((a, b) => b.value - a.value);
   }, [expenses]);
 
-  // 2. Dados para o gráfico de barras: Rastreabilidade Casal (Lucas vs Mariana)
+  // 2. Dados para o gráfico de barras: Rastreabilidade Casal
   const coupleComparisonData = useMemo(() => {
     return [
       {
-        pessoa: "Lucas",
+        pessoa: partner1FirstName,
         Receitas: incomeStats.lucasNet,
         Gastos: expenseStats.lucasSpent,
       },
       {
-        pessoa: "Mariana",
+        pessoa: partner2FirstName,
         Receitas: incomeStats.marianaNet,
         Gastos: expenseStats.marianaSpent,
       },
     ];
-  }, [incomeStats, expenseStats]);
+  }, [incomeStats, expenseStats, partner1FirstName, partner2FirstName]);
 
   const CustomPieTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
@@ -226,7 +229,7 @@ export const ChartsSection: React.FC = () => {
 
         <div className="pt-3 border-t border-[#E6DEC8] flex items-center justify-around text-[11px] text-[#786B5E]">
           <div>
-            Proporção de Renda: <strong className="text-[#7A8B68]">Lucas {incomeStats.lucasProportion}%</strong> &bull; <strong className="text-[#C46D53]">Mariana {incomeStats.marianaProportion}%</strong>
+            Proporção de Renda: <strong className="text-[#7A8B68]">{partner1FirstName} {incomeStats.lucasProportion}%</strong> &bull; <strong className="text-[#C46D53]">{partner2FirstName} {incomeStats.marianaProportion}%</strong>
           </div>
         </div>
       </div>
