@@ -48,14 +48,52 @@ export async function GET(request: NextRequest) {
   try {
     const authUser = await getAuthenticatedUserSession();
     if (!authUser) {
+      // Retornar perfis do casal para a tela de login sem dados transacionais
+      // Garante que mesmo deslogado o cliente sincronize os nomes e fotos reais sem expor contas
+      const [users, coupleSettings] = await Promise.all([
+        prisma.user.findMany({
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatar: true,
+            role: true,
+            salaryGross: true,
+            salaryNet: true,
+            vrAmount: true,
+            vaAmount: true,
+            incomeProportion: true,
+            pinHash: true,
+          },
+        }),
+        prisma.coupleSettings.findFirst(),
+      ]);
+
       return NextResponse.json(
         {
-          error: "Não autorizado (Unauthorized)",
-          message:
-            "Sessão inexistente ou expirada. Efetue login para visualizar os dados financeiros.",
-          statusCode: 401,
+          authenticated: false,
+          users,
+          coupleSettings,
+          loans: [],
+          incomes: [],
+          expenses: [],
+          creditCards: [],
+          installments: [],
+          benefitCards: [],
+          emergencyFund: {
+            id: "fund-default",
+            currentAmount: 0,
+            targetMonths: coupleSettings?.emergencyFundMonthsTarget || 6,
+            monthlyLivingCostCalculated: 0,
+            notes: "Reserva de emergência pronta para aportes reais",
+          },
         },
-        { status: 401 }
+        {
+          status: 200,
+          headers: {
+            "Cache-Control": "private, no-cache, no-store, must-revalidate",
+          },
+        }
       );
     }
 
@@ -107,6 +145,7 @@ export async function GET(request: NextRequest) {
       installments,
       benefitCards,
       coupleSettings,
+      emergencyFund,
     ] = await Promise.all([
       prisma.user.findUnique({
         where: { id: authUser.id },
@@ -140,14 +179,14 @@ export async function GET(request: NextRequest) {
       }),
       prisma.loan.findMany({
         include: { amortizations: true },
-        orderBy: { monthlyInterestRate: "desc" }, // Otimizado com @@index([monthlyInterestRate(sort: Desc)])
+        orderBy: { monthlyInterestRate: "desc" },
       }),
       prisma.income.findMany({
-        orderBy: { receivedAt: "desc" }, // Otimizado com @@index([receivedAt(sort: Desc)])
+        orderBy: { receivedAt: "desc" },
       }),
       prisma.expense.findMany({
         where: Object.keys(expenseWhere).length > 0 ? expenseWhere : undefined,
-        orderBy: { date: "desc" }, // Otimizado com @@index([date(sort: Desc)])
+        orderBy: { date: "desc" },
         take: limitNumber,
       }),
       prisma.creditCard.findMany({
@@ -161,6 +200,9 @@ export async function GET(request: NextRequest) {
         orderBy: { name: "asc" },
       }),
       prisma.coupleSettings.findFirst(),
+      prisma.emergencyFund.findFirst({
+        include: { deposits: true },
+      }),
     ]);
 
     if (!currentUser) {
@@ -179,6 +221,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         source: "neon-postgres",
+        authenticated: true,
         authenticatedUserId: authUser.id,
         users,
         currentUser,
@@ -189,6 +232,13 @@ export async function GET(request: NextRequest) {
         installments,
         benefitCards,
         coupleSettings,
+        emergencyFund: emergencyFund || {
+          id: "fund-default",
+          currentAmount: 0,
+          targetMonths: coupleSettings?.emergencyFundMonthsTarget || 6,
+          monthlyLivingCostCalculated: 0,
+          notes: "Reserva de emergência pronta para aportes reais",
+        },
       },
       {
         status: 200,

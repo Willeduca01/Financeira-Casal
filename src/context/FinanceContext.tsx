@@ -97,6 +97,8 @@ interface FinanceContextType {
   updateCoupleSettings: (data: Partial<CoupleSettings>) => Promise<void>;
   clearAllTransactionalData: () => Promise<void>;
   resetAllData: () => void;
+  refreshFinances: () => Promise<void>;
+  isSyncing: boolean;
 
   cardsMetrics: {
     totalCreditLimit: number;
@@ -182,7 +184,7 @@ interface FinanceContextType {
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 
-const STORAGE_KEY_PREFIX = "financas_casal_v1_";
+const STORAGE_KEY_PREFIX = "financas_casal_v2_";
 
 export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -190,6 +192,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
   // Carregamento com suporte a LocalStorage e Mock inicial
   const [isClient, setIsClient] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [users, setUsers] = useState<User[]>(INITIAL_USERS);
   const [currentUserId, setCurrentUserId] = useState<string>("user-lucas");
   const [coupleSettings, setCoupleSettings] = useState<CoupleSettings>(INITIAL_COUPLE_SETTINGS);
@@ -206,15 +209,67 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
   const [installments, setInstallments] = useState<CreditCardInstallment[]>(INITIAL_INSTALLMENTS);
   const [benefitCards, setBenefitCards] = useState<BenefitCard[]>(INITIAL_BENEFIT_CARDS);
 
+  // Sincronização contínua com Neon Postgres (Multi-dispositivos / Nuvem)
+  const refreshFromBackend = useCallback(async () => {
+    try {
+      setIsSyncing(true);
+      const res = await fetch("/api/finances", { cache: "no-store" });
+      if (!res.ok) return;
+      const data = await res.json();
+
+      if (data?.users && data.users.length > 0) {
+        setUsers(data.users);
+      }
+      if (data?.coupleSettings) {
+        setCoupleSettings(data.coupleSettings);
+      }
+
+      if (data?.authenticated) {
+        if (data.loans !== undefined) setLoans(data.loans);
+        if (data.expenses !== undefined) setExpenses(data.expenses);
+        if (data.incomes !== undefined) setIncomes(data.incomes);
+        if (data.creditCards !== undefined) setCreditCards(data.creditCards);
+        if (data.installments !== undefined) setInstallments(data.installments);
+        if (data.benefitCards !== undefined) setBenefitCards(data.benefitCards);
+        if (data.emergencyFund !== undefined) setEmergencyFund(data.emergencyFund);
+      } else {
+        // Se a sessão ainda não está logada no servidor, manter listas transacionais limpas
+        setLoans([]);
+        setExpenses([]);
+        setIncomes([]);
+        setCreditCards([]);
+        setInstallments([]);
+        setBenefitCards([]);
+      }
+    } catch (err) {
+      console.warn("[SYNC] Erro ao sincronizar com banco em nuvem:", err);
+    } finally {
+      setIsSyncing(false);
+    }
+  }, []);
+
   // Inicialização no cliente
   useEffect(() => {
     setIsClient(true);
     const now = new Date();
     setSelectedMonth(now.getMonth());
     setSelectedYear(now.getFullYear());
-    const isProduction = process.env.NODE_ENV === "production";
 
     try {
+      // 1. Limpeza automática defensiva de dados demonstrativos legados (v1) no aparelho do usuário
+      const legacyKeys: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith("financas_casal_v1_")) {
+          legacyKeys.push(k);
+        }
+      }
+      if (legacyKeys.length > 0) {
+        legacyKeys.forEach((k) => localStorage.removeItem(k));
+        console.log(`[STORAGE] ${legacyKeys.length} chaves demonstrativas legadas v1 removidas.`);
+      }
+
+      // 2. Leitura do LocalStorage v2
       const savedAuth = localStorage.getItem(STORAGE_KEY_PREFIX + "isAuthenticated");
       const savedUsers = localStorage.getItem(STORAGE_KEY_PREFIX + "users");
       const savedCurrentUserId = localStorage.getItem(STORAGE_KEY_PREFIX + "currentUserId");
@@ -241,42 +296,21 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       if (savedInstallments) setInstallments(JSON.parse(savedInstallments));
       if (savedBenefitCards) setBenefitCards(JSON.parse(savedBenefitCards));
 
-      // Em produção, se não houver dados no LocalStorage, sincronizar da API do Neon
-      if (isProduction && !savedUsers) {
-        fetch("/api/finances")
-          .then((res) => {
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            return res.json();
-          })
-          .then((data) => {
-            if (data?.users && data.users.length > 0) {
-              setUsers(data.users);
-              if (data.loans) setLoans(data.loans);
-              if (data.expenses) setExpenses(data.expenses);
-              if (data.incomes) setIncomes(data.incomes);
-              if (data.creditCards) setCreditCards(data.creditCards);
-              if (data.installments) setInstallments(data.installments);
-              if (data.benefitCards) setBenefitCards(data.benefitCards);
-            }
-          })
-          .catch((err) => {
-            console.error(
-              "[SECURITY] Falha ao sincronizar com banco em produção. Fallback para mocks BLOQUEADO por segurança:",
-              err
-            );
-          });
-      }
+      // 3. Sincronização imediata com Neon Postgres para garantir visão unificada em todos os aparelhos
+      refreshFromBackend();
     } catch (e) {
-      if (isProduction) {
-        console.error(
-          "[SECURITY AUDIT] Erro de persistência em produção. Fallback para dados mockados estritamente desabilitado:",
-          e
-        );
-      } else {
-        console.warn("Erro ao ler do LocalStorage, usando mocks (modo desenvolvimento local):", e);
-      }
+      console.warn("Erro ao ler do LocalStorage:", e);
     }
-  }, []);
+
+    // 4. Re-sincronizar sempre que o usuário retornar ao app / aba no celular ou PC
+    const handleWindowFocus = () => {
+      refreshFromBackend();
+    };
+    window.addEventListener("focus", handleWindowFocus);
+    return () => {
+      window.removeEventListener("focus", handleWindowFocus);
+    };
+  }, [refreshFromBackend]);
 
   // Salvar alterações
   useEffect(() => {
@@ -401,16 +435,22 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
           redirect: false,
           email: user.email,
           password: pin.trim(),
-        }).catch((err: any) => {
-          console.warn("[AUTH] Falha ao sincronizar cookie de sessão NextAuth:", err);
-        });
+        })
+          .then((res: any) => {
+            if (res && !res.error) {
+              refreshFromBackend();
+            }
+          })
+          .catch((err: any) => {
+            console.warn("[AUTH] Falha ao sincronizar cookie de sessão NextAuth:", err);
+          });
       } catch (e) {
         // Ignorar caso em modo offline
       }
 
       return { success: true };
     },
-    [users, isClient]
+    [users, isClient, refreshFromBackend]
   );
 
   const logout = useCallback(() => {
@@ -1519,14 +1559,22 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
     });
 
     if (typeof window !== "undefined") {
-      localStorage.removeItem(STORAGE_KEY_PREFIX + "expenses");
-      localStorage.removeItem(STORAGE_KEY_PREFIX + "incomes");
-      localStorage.removeItem(STORAGE_KEY_PREFIX + "loans");
-      localStorage.removeItem(STORAGE_KEY_PREFIX + "amortizations");
-      localStorage.removeItem(STORAGE_KEY_PREFIX + "creditCards");
-      localStorage.removeItem(STORAGE_KEY_PREFIX + "installments");
-      localStorage.removeItem(STORAGE_KEY_PREFIX + "benefitCards");
-      localStorage.removeItem(STORAGE_KEY_PREFIX + "emergencyFund");
+      try {
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (
+            k &&
+            (k.startsWith("financas_casal_v1_") || k.startsWith("financas_casal_v2_")) &&
+            !k.includes("isAuthenticated") &&
+            !k.includes("currentUserId") &&
+            !k.includes("users")
+          ) {
+            keysToRemove.push(k);
+          }
+        }
+        keysToRemove.forEach((k) => localStorage.removeItem(k));
+      } catch {}
     }
 
     try {
@@ -1538,10 +1586,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
           data: { confirm: true },
         }),
       });
+      await refreshFromBackend();
     } catch (e) {
       console.warn("Aviso ao sincronizar limpeza de dados:", e);
     }
-  }, []);
+  }, [refreshFromBackend]);
 
   // Resetar dados para o padrão limpo
   const resetAllData = useCallback(() => {
@@ -1592,6 +1641,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       updateCoupleSettings,
       clearAllTransactionalData,
       resetAllData,
+      refreshFinances: refreshFromBackend,
+      isSyncing,
       freeWallet,
       benefitsWallet,
       creditCard,
@@ -1641,6 +1692,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       updateCoupleSettings,
       clearAllTransactionalData,
       resetAllData,
+      refreshFromBackend,
+      isSyncing,
       freeWallet,
       benefitsWallet,
       creditCard,

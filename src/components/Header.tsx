@@ -57,6 +57,8 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMobileMenu, onNavigateTab 
     setSelectedMonth,
     setSelectedYear,
     resetAllData,
+    refreshFinances,
+    isSyncing,
   } = useFinance();
 
   const [showUserDropdown, setShowUserDropdown] = useState(false);
@@ -125,8 +127,22 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMobileMenu, onNavigateTab 
             </div>
           </div>
 
-          {/* Lado Direito: Avatares do Casal + Botão de Bloqueio */}
+          {/* Lado Direito: Sincronização em Nuvem, Bloqueio e Avatares */}
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => refreshFinances()}
+              disabled={isSyncing}
+              className={`flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 bg-white/15 hover:bg-white/25 text-[#FBF9F5] rounded-full text-xs font-medium transition-all backdrop-blur-sm border border-white/20 shadow-sm active:scale-95 disabled:opacity-50 ${
+                isSyncing ? "animate-pulse" : ""
+              }`}
+              title="Sincronizar com o banco de dados Neon em tempo real"
+              aria-label="Sincronizar"
+            >
+              <RotateCcw size={13} className={isSyncing ? "animate-spin" : ""} />
+              <span className="hidden sm:inline">{isSyncing ? "Sincronizando..." : "Sincronizar"}</span>
+            </button>
+
             <button
               onClick={logout}
               className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-white/15 hover:bg-white/25 text-[#FBF9F5] rounded-full text-xs font-medium transition-all backdrop-blur-sm border border-white/20 shadow-sm"
@@ -231,6 +247,17 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMobileMenu, onNavigateTab 
                         <span>Configurações do Perfil & Casal</span>
                       </button>
                     )}
+
+                    <button
+                      onClick={() => {
+                        setShowUserDropdown(false);
+                        refreshFinances();
+                      }}
+                      className="w-full flex items-center gap-2 p-2 rounded-xl text-xs text-[#2C221E] hover:bg-[#F4EFE6] transition-colors font-medium text-left"
+                    >
+                      <RotateCcw size={14} className={`text-[#C46D53] ${isSyncing ? "animate-spin" : ""}`} />
+                      <span>{isSyncing ? "Sincronizando com a Nuvem..." : "Atualizar Dados com a Nuvem"}</span>
+                    </button>
 
                     <button
                       onClick={() => {
