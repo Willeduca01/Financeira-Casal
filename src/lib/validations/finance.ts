@@ -242,6 +242,30 @@ export const PayLoanInstallmentSchema = z.object({
   loanId: validId,
 });
 
+// 9. Configurações de Usuário e Casal
+export const UpdateUserSchema = z.object({
+  name: sanitizedString(1, 80, "Nome do integrante").optional(),
+  email: z.string().email("E-mail inválido").optional(),
+  avatar: z.string().max(2000000, "Foto excede o tamanho máximo").optional().nullable(),
+  salaryGross: nonNegativeMonetary("Salário bruto").optional(),
+  salaryNet: nonNegativeMonetary("Salário líquido").optional(),
+  vrAmount: nonNegativeMonetary("Valor do VR").optional(),
+  vaAmount: nonNegativeMonetary("Valor do VA").optional(),
+  incomeProportion: z.number().min(0).max(100).optional(),
+  pin: z.string().regex(/^\d{4}$/, "PIN deve conter exatamente 4 dígitos numéricos").optional(),
+});
+
+export const UpdateCoupleSettingsSchema = z.object({
+  coupleName: sanitizedString(1, 100, "Nome do casal").optional(),
+  emergencyFundMonthsTarget: z.number().int().min(1).max(24).optional(),
+  user1SalaryProportion: z.number().min(0).max(100).optional(),
+  user2SalaryProportion: z.number().min(0).max(100).optional(),
+});
+
+export const ClearDataSchema = z.object({
+  confirm: z.literal(true),
+});
+
 /**
  * ==============================================================================
  * DISPATCHER ACTION SCHEMAS (POST, PUT, DELETE)
@@ -256,6 +280,7 @@ export const FinancePostActionSchema = z.discriminatedUnion("entity", [
   z.object({ entity: z.literal("amortization"), data: CreateLoanAmortizationSchema }),
   z.object({ entity: z.literal("emergencyDeposit"), data: CreateEmergencyDepositSchema }),
   z.object({ entity: z.literal("payInstallment"), data: PayLoanInstallmentSchema }),
+  z.object({ entity: z.literal("clearData"), data: ClearDataSchema }),
 ]);
 
 export const FinancePutActionSchema = z.discriminatedUnion("entity", [
@@ -263,6 +288,8 @@ export const FinancePutActionSchema = z.discriminatedUnion("entity", [
   z.object({ entity: z.literal("income"), id: validId, data: UpdateIncomeSchema }),
   z.object({ entity: z.literal("creditCard"), id: validId, data: UpdateCreditCardSchema }),
   z.object({ entity: z.literal("benefitCard"), id: validId, data: UpdateBenefitCardSchema }),
+  z.object({ entity: z.literal("user"), id: validId, data: UpdateUserSchema }),
+  z.object({ entity: z.literal("coupleSettings"), id: z.string().default("default"), data: UpdateCoupleSettingsSchema }),
 ]);
 
 export const FinanceDeleteQuerySchema = z.object({
@@ -275,3 +302,4 @@ export const FinanceDeleteQuerySchema = z.object({
   ]),
   id: validId,
 });
+

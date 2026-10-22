@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { z } from "zod";
+import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
 import {
@@ -447,6 +448,30 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({ success: true, data: updated });
       }
+
+      case "clearData": {
+        await prisma.creditCardInstallment.deleteMany({});
+        await prisma.expense.deleteMany({});
+        await prisma.creditCard.deleteMany({});
+        await prisma.benefitCard.deleteMany({});
+        await prisma.loanAmortization.deleteMany({});
+        await prisma.emergencyDeposit.deleteMany({});
+        await prisma.income.deleteMany({});
+        await prisma.loan.deleteMany({});
+        await prisma.emergencyFund.deleteMany({});
+        await prisma.emergencyFund.create({
+          data: {
+            currentAmount: 0,
+            targetMonths: 6,
+            monthlyLivingCostCalculated: 0,
+            notes: "Reserva de emergência pronta para aportes reais",
+          },
+        });
+        return NextResponse.json({
+          success: true,
+          message: "Todos os lançamentos foram limpos com sucesso.",
+        });
+      }
     }
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -579,6 +604,48 @@ export async function PUT(request: NextRequest) {
             ...(action.data.walletType && { walletType: action.data.walletType }),
           },
         });
+        return NextResponse.json({ success: true, data: updated });
+      }
+
+      case "user": {
+        const updateData: any = {};
+        if (action.data.name !== undefined) updateData.name = action.data.name;
+        if (action.data.email !== undefined) updateData.email = action.data.email;
+        if (action.data.avatar !== undefined) updateData.avatar = action.data.avatar;
+        if (action.data.salaryGross !== undefined) updateData.salaryGross = action.data.salaryGross;
+        if (action.data.salaryNet !== undefined) updateData.salaryNet = action.data.salaryNet;
+        if (action.data.vrAmount !== undefined) updateData.vrAmount = action.data.vrAmount;
+        if (action.data.vaAmount !== undefined) updateData.vaAmount = action.data.vaAmount;
+        if (action.data.incomeProportion !== undefined) updateData.incomeProportion = action.data.incomeProportion;
+        if (action.data.pin) {
+          updateData.pinHash = await bcrypt.hash(action.data.pin, 10);
+        }
+
+        const updated = await prisma.user.update({
+          where: { id: action.id },
+          data: updateData,
+        });
+        return NextResponse.json({ success: true, data: updated });
+      }
+
+      case "coupleSettings": {
+        const existingSettings = await prisma.coupleSettings.findFirst();
+        let updated;
+        if (existingSettings) {
+          updated = await prisma.coupleSettings.update({
+            where: { id: existingSettings.id },
+            data: action.data,
+          });
+        } else {
+          updated = await prisma.coupleSettings.create({
+            data: {
+              coupleName: action.data.coupleName || "Finanças do Casal",
+              emergencyFundMonthsTarget: action.data.emergencyFundMonthsTarget || 6,
+              user1SalaryProportion: action.data.user1SalaryProportion || 50,
+              user2SalaryProportion: action.data.user2SalaryProportion || 50,
+            },
+          });
+        }
         return NextResponse.json({ success: true, data: updated });
       }
     }

@@ -8,7 +8,8 @@ export type TabType =
   | "transactions"
   | "cards"
   | "loans"
-  | "fixed-reserve";
+  | "fixed-reserve"
+  | "settings";
 
 interface BottomNavProps {
   activeTab: TabType;

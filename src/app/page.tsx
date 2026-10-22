@@ -74,6 +74,11 @@ const FixedAndReserveView = dynamic(
   { loading: () => <ViewSkeleton />, ssr: false }
 );
 
+const SettingsView = dynamic(
+  () => import("@/components/settings/SettingsView").then((mod) => mod.SettingsView),
+  { loading: () => <ViewSkeleton />, ssr: false }
+);
+
 const NewTransactionModal = dynamic(
   () => import("@/components/modals/NewTransactionModal").then((mod) => mod.NewTransactionModal),
   { ssr: false }
@@ -131,8 +136,11 @@ function DashboardContent() {
 
       {/* 2. CONTEÚDO PRINCIPAL (À DIREITA DA SIDEBAR) */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Top Header com Botão de Menu para Mobile */}
-        <Header onOpenMobileMenu={() => setIsMobileSidebarOpen(true)} />
+        {/* Top Header com Botão de Menu para Mobile e Navegação */}
+        <Header
+          onOpenMobileMenu={() => setIsMobileSidebarOpen(true)}
+          onNavigateTab={setActiveTab}
+        />
 
         {/* Main Container - Agora 100% Desobstruído e Sem Menus Flutuantes na Base */}
         <main className="flex-1 max-w-6xl w-full mx-auto px-3.5 sm:px-6 py-4 md:py-6 pb-12 space-y-5">
@@ -197,6 +205,13 @@ function DashboardContent() {
           {activeTab === "fixed-reserve" && (
             <div className="animate-in fade-in duration-200">
               <FixedAndReserveView />
+            </div>
+          )}
+
+          {/* TAB 5: CONFIGURAÇÕES DO PERFIL & CASAL */}
+          {activeTab === "settings" && (
+            <div className="animate-in fade-in duration-200">
+              <SettingsView />
             </div>
           )}
         </main>

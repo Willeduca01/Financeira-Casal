@@ -15,8 +15,10 @@ import {
   Lock,
   KeyRound,
   LogOut,
+  Settings,
 } from "lucide-react";
 import dynamic from "next/dynamic";
+import { TabType } from "@/components/BottomNav";
 
 const ChangePinModal = dynamic(
   () => import("@/components/modals/ChangePinModal").then((m) => m.ChangePinModal),
@@ -25,6 +27,7 @@ const ChangePinModal = dynamic(
 
 interface HeaderProps {
   onOpenMobileMenu?: () => void;
+  onNavigateTab?: (tab: TabType) => void;
 }
 
 const MONTH_NAMES = [
@@ -42,11 +45,12 @@ const MONTH_NAMES = [
   "Dezembro",
 ];
 
-export const Header: React.FC<HeaderProps> = ({ onOpenMobileMenu }) => {
+export const Header: React.FC<HeaderProps> = ({ onOpenMobileMenu, onNavigateTab }) => {
   const {
     currentUser,
     switchUser,
     users,
+    coupleSettings,
     logout,
     selectedMonth,
     selectedYear,
@@ -103,7 +107,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMobileMenu }) => {
                 Finanças a Dois
               </span>
               <span className="text-xs font-serif font-bold text-[#FBF9F5]">
-                Lucas & Mariana
+                {coupleSettings.coupleName || (users[0] && users[1] ? `${users[0].name.split(" ")[0]} & ${users[1].name.split(" ")[0]}` : "Finanças do Casal")}
               </span>
             </div>
           </div>
@@ -111,7 +115,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMobileMenu }) => {
           {/* Centro: Título com Tipografia Serifada Acolhedora */}
           <div className="text-center">
             <h1 className="font-serif text-xl sm:text-2xl font-black tracking-tight text-[#FBF9F5]">
-              Casal Avalanche
+              {coupleSettings.coupleName || "Casal Avalanche"}
             </h1>
             <div className="inline-flex items-center gap-1.5 mt-0.5">
               <span className="w-1.5 h-1.5 rounded-full bg-[#FBF9F5]/60 animate-pulse" />
@@ -215,6 +219,19 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMobileMenu }) => {
 
                   {/* Segurança e Opções de Conta */}
                   <div className="border-t border-[#E6DEC8] mt-2 pt-2 space-y-1">
+                    {onNavigateTab && (
+                      <button
+                        onClick={() => {
+                          setShowUserDropdown(false);
+                          onNavigateTab("settings");
+                        }}
+                        className="w-full flex items-center gap-2 p-2 rounded-xl text-xs text-[#2C221E] hover:bg-[#F4EFE6] transition-colors font-medium text-left"
+                      >
+                        <Settings size={14} className="text-[#C46D53]" />
+                        <span>Configurações do Perfil & Casal</span>
+                      </button>
+                    )}
+
                     <button
                       onClick={() => {
                         setShowUserDropdown(false);
@@ -247,7 +264,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMobileMenu }) => {
                       className="w-full flex items-center gap-2 p-1.5 px-2 rounded-xl text-[11px] text-[#B05B42] hover:bg-[#C46D53]/10 transition-colors font-medium"
                     >
                       <RotateCcw size={12} />
-                      Restaurar dados de teste
+                      Limpar dados e recomeçar
                     </button>
                   </div>
                 </div>
@@ -293,10 +310,10 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMobileMenu }) => {
               <RotateCcw size={20} />
             </div>
             <h3 className="font-serif text-lg font-bold text-[#2C221E]">
-              Restaurar dados iniciais?
+              Limpar dados e recomeçar?
             </h3>
             <p className="text-xs text-[#786B5E] leading-relaxed">
-              Isso recarregará os dados originais do casal Lucas & Mariana com todos os empréstimos e contas demonstrativas.
+              Isso limpará os lançamentos demonstrativos antigos para você começar a cadastrar suas finanças reais. Seus perfis e fotos serão mantidos.
             </p>
             <div className="flex gap-2 justify-end pt-2">
               <button
@@ -312,7 +329,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMobileMenu }) => {
                 }}
                 className="px-4 py-2 rounded-full text-xs font-bold bg-[#C46D53] hover:bg-[#B05B42] text-[#FBF9F5] shadow-md transition-all"
               >
-                Sim, restaurar
+                Sim, limpar dados
               </button>
             </div>
           </div>

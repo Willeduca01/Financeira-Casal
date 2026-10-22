@@ -70,130 +70,13 @@ export const INITIAL_COUPLE_SETTINGS: CoupleSettings = {
   user2SalaryProportion: 41.8,
 };
 
-export const INITIAL_LOANS: Loan[] = [
-  {
-    id: "loan-nubank",
-    name: "Empréstimo Pessoal Nubank",
-    bank: "Nubank",
-    originalAmount: 12000.0,
-    currentBalance: 8420.0,
-    monthlyInterestRate: 4.85, // Maior taxa -> Alvo #1 no Avalanche!
-    totalInstallments: 24,
-    paidInstallments: 9,
-    currentInstallmentAmount: 785.4,
-    dueDay: 10,
-    status: "ACTIVE",
-    notes: "Contrato firmado para reforma da cozinha. Foco total em quitação!",
-  },
-  {
-    id: "loan-caixa",
-    name: "Empréstimo Caixa Consignado",
-    bank: "Caixa Econômica",
-    originalAmount: 25000.0,
-    currentBalance: 18600.0,
-    monthlyInterestRate: 2.1,
-    totalInstallments: 48,
-    paidInstallments: 16,
-    currentInstallmentAmount: 740.0,
-    dueDay: 5,
-    status: "ACTIVE",
-    notes: "Desconto em folha / débito programado",
-  },
-  {
-    id: "loan-santander",
-    name: "Crédito Pessoal Santander",
-    bank: "Santander",
-    originalAmount: 6000.0,
-    currentBalance: 3200.0,
-    monthlyInterestRate: 1.89,
-    totalInstallments: 18,
-    paidInstallments: 10,
-    currentInstallmentAmount: 410.0,
-    dueDay: 20,
-    status: "ACTIVE",
-    notes: "Reta final de quitação",
-  },
-];
+export const INITIAL_LOANS: Loan[] = [];
+
 
 const currentYear = 2026;
 const currentMonth = 9; // Outubro (0-indexed)
 
-export const INITIAL_INCOMES: Income[] = [
-  {
-    id: "inc-lucas-sal",
-    description: "Salário Lucas (Empresa de Tecnologia)",
-    amountGross: 7500.0,
-    amountNet: 5850.0,
-    category: "SALARY",
-    walletType: "FREE",
-    receivedAt: new Date(currentYear, currentMonth, 5).toISOString(),
-    userId: "user-lucas",
-  },
-  {
-    id: "inc-lucas-vr",
-    description: "Vale Refeição Lucas (Sodexo)",
-    amountGross: 650.0,
-    amountNet: 650.0,
-    category: "VR",
-    walletType: "BENEFITS",
-    benefitType: "VR",
-    receivedAt: new Date(currentYear, currentMonth, 5).toISOString(),
-    userId: "user-lucas",
-  },
-  {
-    id: "inc-lucas-va",
-    description: "Vale Alimentação Lucas (Sodexo)",
-    amountGross: 450.0,
-    amountNet: 450.0,
-    category: "VA",
-    walletType: "BENEFITS",
-    benefitType: "VA",
-    receivedAt: new Date(currentYear, currentMonth, 5).toISOString(),
-    userId: "user-lucas",
-  },
-  {
-    id: "inc-mari-sal",
-    description: "Salário Mariana (Hospital São Paulo)",
-    amountGross: 5200.0,
-    amountNet: 4200.0,
-    category: "SALARY",
-    walletType: "FREE",
-    receivedAt: new Date(currentYear, currentMonth, 5).toISOString(),
-    userId: "user-mariana",
-  },
-  {
-    id: "inc-mari-vr",
-    description: "Vale Refeição Mariana (Alelo)",
-    amountGross: 500.0,
-    amountNet: 500.0,
-    category: "VR",
-    walletType: "BENEFITS",
-    benefitType: "VR",
-    receivedAt: new Date(currentYear, currentMonth, 5).toISOString(),
-    userId: "user-mariana",
-  },
-  {
-    id: "inc-mari-va",
-    description: "Vale Alimentação Mariana (Alelo)",
-    amountGross: 350.0,
-    amountNet: 350.0,
-    category: "VA",
-    walletType: "BENEFITS",
-    benefitType: "VA",
-    receivedAt: new Date(currentYear, currentMonth, 5).toISOString(),
-    userId: "user-mariana",
-  },
-  {
-    id: "inc-mari-extra",
-    description: "Renda Extra Plantão / Consultoria",
-    amountGross: 600.0,
-    amountNet: 600.0,
-    category: "EXTRA",
-    walletType: "FREE",
-    receivedAt: new Date(currentYear, currentMonth, 12).toISOString(),
-    userId: "user-mariana",
-  },
-];
+export const INITIAL_INCOMES: Income[] = [];
 
 export const INITIAL_EXPENSES: Expense[] = [
   // Gastos Fixos

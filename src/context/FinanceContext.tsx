@@ -92,6 +92,10 @@ interface FinanceContextType {
   updateBenefitCardBalance: (id: string, newBalance: number) => void;
   deleteBenefitCard: (id: string) => void;
   
+  // Configurações de Usuário e Casal
+  updateUserProfile: (userId: string, data: Partial<User>) => Promise<void>;
+  updateCoupleSettings: (data: Partial<CoupleSettings>) => Promise<void>;
+  clearAllTransactionalData: () => Promise<void>;
   resetAllData: () => void;
 
   cardsMetrics: {
@@ -222,9 +226,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       const savedCreditCards = localStorage.getItem(STORAGE_KEY_PREFIX + "creditCards");
       const savedInstallments = localStorage.getItem(STORAGE_KEY_PREFIX + "installments");
       const savedBenefitCards = localStorage.getItem(STORAGE_KEY_PREFIX + "benefitCards");
+      const savedCoupleSettings = localStorage.getItem(STORAGE_KEY_PREFIX + "coupleSettings");
 
       if (savedAuth === "true") setIsAuthenticated(true);
       if (savedUsers) setUsers(JSON.parse(savedUsers));
+      if (savedCoupleSettings) setCoupleSettings(JSON.parse(savedCoupleSettings));
       if (savedCurrentUserId) setCurrentUserId(savedCurrentUserId);
       if (savedIncomes) setIncomes(JSON.parse(savedIncomes));
       if (savedExpenses) setExpenses(JSON.parse(savedExpenses));
@@ -286,10 +292,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       localStorage.setItem(STORAGE_KEY_PREFIX + "creditCards", JSON.stringify(creditCards));
       localStorage.setItem(STORAGE_KEY_PREFIX + "installments", JSON.stringify(installments));
       localStorage.setItem(STORAGE_KEY_PREFIX + "benefitCards", JSON.stringify(benefitCards));
+      localStorage.setItem(STORAGE_KEY_PREFIX + "coupleSettings", JSON.stringify(coupleSettings));
     } catch (e) {
       console.error("Erro ao persistir no LocalStorage:", e);
     }
-  }, [isClient, users, currentUserId, incomes, expenses, loans, amortizations, emergencyFund, creditCards, installments, benefitCards]);
+  }, [isClient, users, coupleSettings, currentUserId, incomes, expenses, loans, amortizations, emergencyFund, creditCards, installments, benefitCards]);
 
   const currentUser = useMemo(
     () => users.find((u) => u.id === currentUserId) || users[0],
@@ -1442,26 +1449,104 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
     };
   }, [creditCards, installments, benefitCards]);
 
-  // Resetar dados para o padrão inicial (Bloqueado em Produção)
-  const resetAllData = useCallback(() => {
-    if (process.env.NODE_ENV === "production") {
-      console.warn(
-        "[SECURITY AUDIT] Ação de reset para dados mockados fictícios está estritamente desabilitada em produção."
+  // Atualização do Perfil do Integrante (Nome, Foto, Salários, Benefícios)
+  const updateUserProfile = useCallback(
+    async (userId: string, updatedFields: Partial<User>) => {
+      const prevUsers = [...users];
+      setUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, ...updatedFields } : u))
       );
-      return;
+
+      await syncWithBackend(
+        () =>
+          fetch("/api/finances", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              entity: "user",
+              id: userId,
+              data: updatedFields,
+            }),
+          }),
+        () => {
+          setUsers(prevUsers);
+        }
+      );
+    },
+    [users, syncWithBackend]
+  );
+
+  // Atualização das Configurações Gerais do Casal
+  const updateCoupleSettings = useCallback(
+    async (updatedFields: Partial<CoupleSettings>) => {
+      const prevSettings = { ...coupleSettings };
+      setCoupleSettings((prev) => ({ ...prev, ...updatedFields }));
+
+      await syncWithBackend(
+        () =>
+          fetch("/api/finances", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              entity: "coupleSettings",
+              id: "default",
+              data: updatedFields,
+            }),
+          }),
+        () => {
+          setCoupleSettings(prevSettings);
+        }
+      );
+    },
+    [coupleSettings, syncWithBackend]
+  );
+
+  // Limpeza de todos os dados transacionais (começar do zero com dados reais)
+  const clearAllTransactionalData = useCallback(async () => {
+    setExpenses([]);
+    setIncomes([]);
+    setLoans([]);
+    setAmortizations([]);
+    setCreditCards([]);
+    setInstallments([]);
+    setBenefitCards([]);
+    setEmergencyFund({
+      id: "fund-1",
+      currentAmount: 0,
+      targetMonths: 6,
+      monthlyLivingCostCalculated: 0,
+      notes: "Reserva de emergência pronta para aportes reais do casal.",
+    });
+
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(STORAGE_KEY_PREFIX + "expenses");
+      localStorage.removeItem(STORAGE_KEY_PREFIX + "incomes");
+      localStorage.removeItem(STORAGE_KEY_PREFIX + "loans");
+      localStorage.removeItem(STORAGE_KEY_PREFIX + "amortizations");
+      localStorage.removeItem(STORAGE_KEY_PREFIX + "creditCards");
+      localStorage.removeItem(STORAGE_KEY_PREFIX + "installments");
+      localStorage.removeItem(STORAGE_KEY_PREFIX + "benefitCards");
+      localStorage.removeItem(STORAGE_KEY_PREFIX + "emergencyFund");
     }
-    setUsers(INITIAL_USERS);
-    setCurrentUserId("user-lucas");
-    setIncomes(INITIAL_INCOMES);
-    setExpenses(INITIAL_EXPENSES);
-    setLoans(INITIAL_LOANS);
-    setAmortizations(INITIAL_AMORTIZATIONS);
-    setEmergencyFund(INITIAL_EMERGENCY_FUND);
-    setCreditCards(INITIAL_CREDIT_CARDS);
-    setInstallments(INITIAL_INSTALLMENTS);
-    setBenefitCards(INITIAL_BENEFIT_CARDS);
-    localStorage.clear();
+
+    try {
+      await fetch("/api/finances", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          entity: "clearData",
+          data: { confirm: true },
+        }),
+      });
+    } catch (e) {
+      console.warn("Aviso ao sincronizar limpeza de dados:", e);
+    }
   }, []);
+
+  // Resetar dados para o padrão limpo
+  const resetAllData = useCallback(() => {
+    clearAllTransactionalData();
+  }, [clearAllTransactionalData]);
 
   // Objeto de contexto memoizado para prevenir re-renderizações desnecessárias
   const contextValue = useMemo(
@@ -1503,6 +1588,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       addBenefitCard,
       updateBenefitCardBalance,
       deleteBenefitCard,
+      updateUserProfile,
+      updateCoupleSettings,
+      clearAllTransactionalData,
       resetAllData,
       freeWallet,
       benefitsWallet,
@@ -1549,6 +1637,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       addBenefitCard,
       updateBenefitCardBalance,
       deleteBenefitCard,
+      updateUserProfile,
+      updateCoupleSettings,
+      clearAllTransactionalData,
       resetAllData,
       freeWallet,
       benefitsWallet,

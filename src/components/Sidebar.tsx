@@ -16,6 +16,7 @@ import {
   Sparkles,
   Mountain,
   CreditCard,
+  Settings,
 } from "lucide-react";
 
 const MONTH_NAMES = [
@@ -52,6 +53,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     currentUser,
     switchUser,
     users,
+    coupleSettings,
     selectedMonth,
     selectedYear,
     setSelectedMonth,
@@ -104,6 +106,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       label: "Gastos Fixos & Reserva",
       icon: <ShieldCheck size={20} className="shrink-0" />,
     },
+    {
+      id: "settings",
+      label: "Configurações",
+      icon: <Settings size={20} className="shrink-0" />,
+      badge: "Perfil",
+    },
   ];
 
   const handleSelectTab = (tab: TabType) => {
@@ -122,7 +130,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
             <div>
               <h2 className="font-serif text-lg font-black text-[#2C221E] leading-tight tracking-tight">
-                Casal Avalanche
+                {coupleSettings.coupleName || "Casal Avalanche"}
               </h2>
               <span className="text-[11px] font-semibold text-[#786B5E] block">
                 Pote Único &bull; Finanças
