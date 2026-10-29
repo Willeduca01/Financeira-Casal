@@ -23,6 +23,28 @@ import {
  * ==============================================================================
  */
 
+// Helper para serializar tipos Decimal do Prisma em números JavaScript nativos
+function serializeDecimals(obj: any): any {
+  if (obj === null || obj === undefined) return obj;
+  if (typeof obj === "object") {
+    if (obj.constructor && (obj.constructor.name === "Decimal" || typeof obj.toNumber === "function")) {
+      return Number(obj);
+    }
+    if (obj instanceof Date) {
+      return obj.toISOString();
+    }
+    if (Array.isArray(obj)) {
+      return obj.map(serializeDecimals);
+    }
+    const res: any = {};
+    for (const key of Object.keys(obj)) {
+      res[key] = serializeDecimals(obj[key]);
+    }
+    return res;
+  }
+  return obj;
+}
+
 // Helper para validação da sessão com suporte multi-dispositivo, PWA e persistência contínua
 async function getAuthenticatedUserSession(request?: NextRequest) {
   // 1. Tentar validar via NextAuth Cookie (JWT)
@@ -267,7 +289,7 @@ export async function GET(request: NextRequest) {
     const durationMs = (performance.now() - startTime).toFixed(1);
 
     return NextResponse.json(
-      {
+      serializeDecimals({
         source: "neon-postgres",
         authenticated: true,
         authenticatedUserId: authUser.id,
@@ -287,7 +309,7 @@ export async function GET(request: NextRequest) {
           monthlyLivingCostCalculated: 0,
           notes: "Reserva de emergência pronta para aportes reais",
         },
-      },
+      }),
       {
         status: 200,
         headers: {
@@ -393,7 +415,7 @@ export async function POST(request: NextRequest) {
             availableLimit: action.data.availableLimit,
             closingDay: action.data.closingDay,
             dueDay: action.data.dueDay,
-            userId: sessionUserId, // IDOR PREVENTED
+            userId: action.data.userId || sessionUserId,
           },
         });
         return NextResponse.json({ success: true, data: newCard }, { status: 201 });
@@ -439,7 +461,7 @@ export async function POST(request: NextRequest) {
             depositDay: action.data.depositDay,
             color: action.data.color,
             lastFourDigits: action.data.lastFourDigits,
-            userId: sessionUserId, // IDOR PREVENTED
+            userId: action.data.userId || sessionUserId,
           },
         });
         return NextResponse.json({ success: true, data: newBenefitCard }, { status: 201 });

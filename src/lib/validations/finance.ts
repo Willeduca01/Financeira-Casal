@@ -156,13 +156,15 @@ export const CreateCreditCardSchema = z
   .object({
     name: sanitizedString(1, 60, "Nome do cartão"),
     bank: sanitizedString(1, 60, "Banco emissor"),
+    userId: validId.optional(),
     color: z
       .string()
       .regex(/^#[0-9A-Fa-f]{6}$/, "Cor hexadecimal inválida (ex: #820AD1)")
       .default("#820AD1"),
     lastFourDigits: z
       .string()
-      .regex(/^\d{4}$/, "Dígitos finais devem conter exatamente 4 números.")
+      .transform((val) => (val && val.trim() !== "" ? val.trim().slice(-4) : null))
+      .pipe(z.string().regex(/^\d{4}$/, "Dígitos finais devem conter exatamente 4 números.").nullable())
       .optional()
       .nullable(),
     totalLimit: positiveMonetary("Limite total do cartão"),
@@ -178,8 +180,14 @@ export const CreateCreditCardSchema = z
 export const UpdateCreditCardSchema = z.object({
   name: sanitizedString(1, 60, "Nome do cartão").optional(),
   bank: sanitizedString(1, 60, "Banco emissor").optional(),
+  userId: validId.optional(),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
-  lastFourDigits: z.string().regex(/^\d{4}$/).optional().nullable(),
+  lastFourDigits: z
+    .string()
+    .transform((val) => (val && val.trim() !== "" ? val.trim().slice(-4) : null))
+    .pipe(z.string().regex(/^\d{4}$/, "Dígitos finais devem conter exatamente 4 números.").nullable())
+    .optional()
+    .nullable(),
   totalLimit: positiveMonetary("Limite total").optional(),
   availableLimit: nonNegativeMonetary("Limite liberado").optional(),
   closingDay: z.number().int().min(1).max(31).optional(),
@@ -202,20 +210,33 @@ export const CreateCreditCardInstallmentSchema = z.object({
 export const CreateBenefitCardSchema = z.object({
   name: sanitizedString(1, 60, "Nome do cartão benefício"),
   type: BenefitTypeEnum,
+  userId: validId.optional(),
   currentBalance: nonNegativeMonetary("Saldo atual"),
   monthlyDeposit: nonNegativeMonetary("Recarga mensal"),
   depositDay: z.number().int().min(1).max(31).default(1),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).default("#7A8B68"),
-  lastFourDigits: z.string().regex(/^\d{4}$/).optional().nullable(),
+  lastFourDigits: z
+    .string()
+    .transform((val) => (val && val.trim() !== "" ? val.trim().slice(-4) : null))
+    .pipe(z.string().regex(/^\d{4}$/, "Dígitos finais devem conter exatamente 4 números.").nullable())
+    .optional()
+    .nullable(),
 });
 
 export const UpdateBenefitCardSchema = z.object({
   name: sanitizedString(1, 60, "Nome do cartão benefício").optional(),
+  type: BenefitTypeEnum.optional(),
+  userId: validId.optional(),
   currentBalance: nonNegativeMonetary("Saldo atual").optional(),
   monthlyDeposit: nonNegativeMonetary("Recarga mensal").optional(),
   depositDay: z.number().int().min(1).max(31).optional(),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
-  lastFourDigits: z.string().regex(/^\d{4}$/).optional().nullable(),
+  lastFourDigits: z
+    .string()
+    .transform((val) => (val && val.trim() !== "" ? val.trim().slice(-4) : null))
+    .pipe(z.string().regex(/^\d{4}$/, "Dígitos finais devem conter exatamente 4 números.").nullable())
+    .optional()
+    .nullable(),
 });
 
 // 6. Amortização de Empréstimos (Método Avalanche)

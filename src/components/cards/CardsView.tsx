@@ -40,6 +40,16 @@ const NewBenefitCardModal = dynamic(
   { ssr: false }
 );
 
+const EditBenefitCardModal = dynamic(
+  () => import("@/components/modals/EditBenefitCardModal").then((m) => m.EditBenefitCardModal),
+  { ssr: false }
+);
+
+const EditCreditCardModal = dynamic(
+  () => import("@/components/modals/EditCreditCardModal").then((m) => m.EditCreditCardModal),
+  { ssr: false }
+);
+
 export const CardsView: React.FC = () => {
   const {
     users,
@@ -51,6 +61,7 @@ export const CardsView: React.FC = () => {
     updateCreditCard,
     deleteCreditCard,
     deleteInstallment,
+    updateBenefitCard,
     updateBenefitCardBalance,
     deleteBenefitCard,
     addInstallment,
@@ -60,6 +71,8 @@ export const CardsView: React.FC = () => {
   const [isNewCreditCardOpen, setIsNewCreditCardOpen] = useState(false);
   const [isNewInstallmentOpen, setIsNewInstallmentOpen] = useState(false);
   const [isNewBenefitCardOpen, setIsNewBenefitCardOpen] = useState(false);
+  const [editingBenefitCard, setEditingBenefitCard] = useState<BenefitCard | null>(null);
+  const [editingCreditCard, setEditingCreditCard] = useState<CreditCard | null>(null);
   const [selectedCardForInstallment, setSelectedCardForInstallment] = useState<string | undefined>(undefined);
 
   // Filtros
@@ -405,10 +418,17 @@ export const CardsView: React.FC = () => {
                           </span>
                           <h4 className="text-lg font-black tracking-tight">{card.name}</h4>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
                           <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-bold backdrop-blur-xs">
                             {cardUser?.name || "Casal"}
                           </span>
+                          <button
+                            onClick={() => setEditingCreditCard(card)}
+                            title="Editar todas as informações do cartão"
+                            className="p-1 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-colors"
+                          >
+                            <Edit2 size={14} />
+                          </button>
                           <button
                             onClick={() => deleteCreditCard(card.id)}
                             title="Excluir cartão"
@@ -500,13 +520,24 @@ export const CardsView: React.FC = () => {
                         </div>
 
                         {editingCardId !== card.id && (
-                          <button
-                            onClick={() => handleStartEditLimit(card)}
-                            className="text-xs font-bold text-[#C46D53] hover:text-[#B05B42] flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-[#C46D53]/30 hover:bg-[#C46D53]/10 transition-colors"
-                          >
-                            <Edit2 size={13} />
-                            <span>Ajustar Limite</span>
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => handleStartEditLimit(card)}
+                              title="Ajuste rápido do valor liberado"
+                              className="text-xs font-bold text-[#786B5E] hover:text-[#2C221E] flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-[#E8DFD1] hover:bg-[#F4EFE6] transition-colors"
+                            >
+                              <Edit2 size={12} />
+                              <span>Ajustar Limite</span>
+                            </button>
+                            <button
+                              onClick={() => setEditingCreditCard(card)}
+                              title="Editar todas as informações do cartão"
+                              className="text-xs font-bold text-[#C46D53] hover:text-[#B05B42] flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-[#C46D53]/30 hover:bg-[#C46D53]/10 transition-colors"
+                            >
+                              <Sparkles size={12} />
+                              <span>Editar Cartão</span>
+                            </button>
+                          </div>
                         )}
                       </div>
 
@@ -712,6 +743,13 @@ export const CardsView: React.FC = () => {
                             {bUser?.name.split(" ")[0] || "Casal"}
                           </span>
                           <button
+                            onClick={() => setEditingBenefitCard(b)}
+                            className="p-1 text-[#786B5E] hover:text-[#2C221E] hover:bg-[#E8DFD1] rounded-lg transition-colors"
+                            title="Editar todas as informações do benefício"
+                          >
+                            <Edit2 size={13} />
+                          </button>
+                          <button
                             onClick={() => deleteBenefitCard(b.id)}
                             className="p-1 text-[#786B5E] hover:text-[#C46D53] rounded-lg transition-colors opacity-0 group-hover:opacity-100"
                             title="Excluir benefício"
@@ -758,8 +796,9 @@ export const CardsView: React.FC = () => {
                               R$ {b.currentBalance.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                             </span>
                             <button
-                              onClick={() => handleStartEditBenefit(b)}
-                              className="text-[10px] font-bold text-[#C46D53] hover:underline flex items-center gap-0.5"
+                              onClick={() => setEditingBenefitCard(b)}
+                              className="text-[10px] font-bold text-[#C46D53] hover:text-[#B05B42] hover:underline flex items-center gap-0.5 cursor-pointer py-0.5 px-1.5 rounded-md hover:bg-[#C46D53]/10 transition-colors"
+                              title="Editar todas as informações do benefício"
                             >
                               <Edit2 size={11} />
                               <span>Editar</span>
@@ -770,10 +809,15 @@ export const CardsView: React.FC = () => {
                     </div>
 
                     {/* Rodapé: Recarga Mensal */}
-                    <div className="mt-4 pt-3 border-t border-[#E8DFD1]/40 flex items-center justify-between text-[11px] text-[#786B5E]">
+                    <div
+                      onClick={() => setEditingBenefitCard(b)}
+                      className="mt-4 pt-3 border-t border-[#E8DFD1]/40 flex items-center justify-between text-[11px] text-[#786B5E] cursor-pointer hover:bg-[#F4EFE6]/60 rounded-xl px-1.5 py-1 -mx-1.5 transition-colors"
+                      title="Clique para editar recarga mensal"
+                    >
                       <span>Recarga mensal:</span>
-                      <span className="font-bold text-[#2C221E]">
+                      <span className="font-bold text-[#2C221E] flex items-center gap-1">
                         + R$ {b.monthlyDeposit.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (dia {b.depositDay})
+                        <Edit2 size={10} className="text-[#786B5E] opacity-70" />
                       </span>
                     </div>
                   </div>
@@ -802,6 +846,18 @@ export const CardsView: React.FC = () => {
       <NewBenefitCardModal
         isOpen={isNewBenefitCardOpen}
         onClose={() => setIsNewBenefitCardOpen(false)}
+      />
+
+      <EditBenefitCardModal
+        isOpen={!!editingBenefitCard}
+        card={editingBenefitCard}
+        onClose={() => setEditingBenefitCard(null)}
+      />
+
+      <EditCreditCardModal
+        isOpen={!!editingCreditCard}
+        card={editingCreditCard}
+        onClose={() => setEditingCreditCard(null)}
       />
     </div>
   );

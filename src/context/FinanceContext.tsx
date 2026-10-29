@@ -89,6 +89,7 @@ interface FinanceContextType {
   addInstallment: (installment: Omit<CreditCardInstallment, "id">) => void;
   deleteInstallment: (id: string) => void;
   addBenefitCard: (card: Omit<BenefitCard, "id">) => void;
+  updateBenefitCard: (id: string, card: Partial<BenefitCard>) => void;
   updateBenefitCardBalance: (id: string, newBalance: number) => void;
   deleteBenefitCard: (id: string) => void;
   
@@ -109,6 +110,10 @@ interface FinanceContextType {
     totalBenefitBalanceVA: number;
     totalBenefitBalance: number;
     totalMonthlyBenefitDeposit: number;
+    totalMonthlyBenefitDepositVR: number;
+    totalMonthlyBenefitDepositVA: number;
+    usedCreditPercentage: number;
+    activeCardsCount: number;
   };
 
   // Cálculos das Carteiras & Orçamento
@@ -132,10 +137,22 @@ interface FinanceContextType {
     totalBenefitsReceived: number;
     totalBenefitsSpent: number;
     remainingTotal: number;
+    cardsMonthlyDepositVR: number;
+    cardsMonthlyDepositVA: number;
+    totalMonthlyDeposit: number;
+    benefitCardsCount: number;
   };
 
   creditCard: {
     totalInvoiceAmount: number;
+    expenseInvoiceAmount: number;
+    monthlyInstallmentsAmount: number;
+    totalCreditLimit: number;
+    totalAvailableLimit: number;
+    totalCommittedLimit: number;
+    usedPercentage: number;
+    cardsCount: number;
+    installmentsCount: number;
   };
 
   incomeStats: {
@@ -186,6 +203,14 @@ const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 
 const STORAGE_KEY_PREFIX = "financas_casal_v2_";
 
+// Helper robusto para garantir conversão numérica estrita e prevenir concatenação de strings
+const parseNumber = (val: any, fallback = 0): number => {
+  if (val === null || val === undefined) return fallback;
+  if (typeof val === "number") return isNaN(val) ? fallback : val;
+  const parsed = parseFloat(String(val).replace(",", "."));
+  return isNaN(parsed) ? fallback : parsed;
+};
+
 export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
@@ -223,20 +248,93 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       const data = await res.json();
 
       if (data?.users && data.users.length > 0) {
-        setUsers(data.users);
+        setUsers(
+          data.users.map((u: any) => ({
+            ...u,
+            salaryGross: parseNumber(u.salaryGross),
+            salaryNet: parseNumber(u.salaryNet),
+            vrAmount: parseNumber(u.vrAmount),
+            vaAmount: parseNumber(u.vaAmount),
+            incomeProportion: parseNumber(u.incomeProportion, 50),
+          }))
+        );
       }
       if (data?.coupleSettings) {
         setCoupleSettings(data.coupleSettings);
       }
 
       if (data?.authenticated) {
-        if (data.loans !== undefined) setLoans(data.loans);
-        if (data.expenses !== undefined) setExpenses(data.expenses);
-        if (data.incomes !== undefined) setIncomes(data.incomes);
-        if (data.creditCards !== undefined) setCreditCards(data.creditCards);
-        if (data.installments !== undefined) setInstallments(data.installments);
-        if (data.benefitCards !== undefined) setBenefitCards(data.benefitCards);
-        if (data.emergencyFund !== undefined) setEmergencyFund(data.emergencyFund);
+        if (data.loans !== undefined) {
+          setLoans(
+            data.loans.map((l: any) => ({
+              ...l,
+              originalAmount: parseNumber(l.originalAmount),
+              currentBalance: parseNumber(l.currentBalance),
+              monthlyInterestRate: parseNumber(l.monthlyInterestRate),
+              originalInstallmentAmount: parseNumber(l.originalInstallmentAmount),
+              currentInstallmentAmount: parseNumber(l.currentInstallmentAmount),
+              totalInstallments: parseNumber(l.totalInstallments),
+              paidInstallments: parseNumber(l.paidInstallments),
+            }))
+          );
+        }
+        if (data.expenses !== undefined) {
+          setExpenses(
+            data.expenses.map((e: any) => ({
+              ...e,
+              amount: parseNumber(e.amount),
+            }))
+          );
+        }
+        if (data.incomes !== undefined) {
+          setIncomes(
+            data.incomes.map((i: any) => ({
+              ...i,
+              amountGross: parseNumber(i.amountGross),
+              amountNet: parseNumber(i.amountNet),
+            }))
+          );
+        }
+        if (data.creditCards !== undefined) {
+          setCreditCards(
+            data.creditCards.map((c: any) => ({
+              ...c,
+              totalLimit: parseNumber(c.totalLimit),
+              availableLimit: parseNumber(c.availableLimit),
+              closingDay: parseNumber(c.closingDay, 1),
+              dueDay: parseNumber(c.dueDay, 10),
+            }))
+          );
+        }
+        if (data.installments !== undefined) {
+          setInstallments(
+            data.installments.map((inst: any) => ({
+              ...inst,
+              totalAmount: parseNumber(inst.totalAmount),
+              installmentAmount: parseNumber(inst.installmentAmount),
+              totalInstallments: parseNumber(inst.totalInstallments),
+              currentInstallment: parseNumber(inst.currentInstallment),
+            }))
+          );
+        }
+        if (data.benefitCards !== undefined) {
+          setBenefitCards(
+            data.benefitCards.map((b: any) => ({
+              ...b,
+              currentBalance: parseNumber(b.currentBalance),
+              monthlyDeposit: parseNumber(b.monthlyDeposit),
+              depositDay: parseNumber(b.depositDay, 1),
+            }))
+          );
+        }
+        if (data.emergencyFund !== undefined) {
+          setEmergencyFund({
+            ...data.emergencyFund,
+            currentAmount: parseNumber(data.emergencyFund.currentAmount),
+            targetMonths: parseNumber(data.emergencyFund.targetMonths, 6),
+            monthlyLivingCostCalculated: parseNumber(data.emergencyFund.monthlyLivingCostCalculated),
+          });
+        }
       }
     } catch (err) {
       console.warn("[SYNC] Erro ao sincronizar com banco em nuvem:", err);
@@ -266,7 +364,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
         console.log(`[STORAGE] ${legacyKeys.length} chaves demonstrativas legadas v1 removidas.`);
       }
 
-      // 2. Leitura do LocalStorage v2
+      // 2. Leitura do LocalStorage v2 com conversão estrita de tipos
       const savedAuth = localStorage.getItem(STORAGE_KEY_PREFIX + "isAuthenticated");
       const savedUsers = localStorage.getItem(STORAGE_KEY_PREFIX + "users");
       const savedCurrentUserId = localStorage.getItem(STORAGE_KEY_PREFIX + "currentUserId");
@@ -281,17 +379,113 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       const savedCoupleSettings = localStorage.getItem(STORAGE_KEY_PREFIX + "coupleSettings");
 
       if (savedAuth === "true") setIsAuthenticated(true);
-      if (savedUsers) setUsers(JSON.parse(savedUsers));
+      if (savedUsers) {
+        const parsed = JSON.parse(savedUsers);
+        if (Array.isArray(parsed)) {
+          setUsers(
+            parsed.map((u: any) => ({
+              ...u,
+              salaryGross: parseNumber(u.salaryGross),
+              salaryNet: parseNumber(u.salaryNet),
+              vrAmount: parseNumber(u.vrAmount),
+              vaAmount: parseNumber(u.vaAmount),
+            }))
+          );
+        }
+      }
       if (savedCoupleSettings) setCoupleSettings(JSON.parse(savedCoupleSettings));
       if (savedCurrentUserId) setCurrentUserId(savedCurrentUserId);
-      if (savedIncomes) setIncomes(JSON.parse(savedIncomes));
-      if (savedExpenses) setExpenses(JSON.parse(savedExpenses));
-      if (savedLoans) setLoans(JSON.parse(savedLoans));
+      if (savedIncomes) {
+        const parsed = JSON.parse(savedIncomes);
+        if (Array.isArray(parsed)) {
+          setIncomes(
+            parsed.map((i: any) => ({
+              ...i,
+              amountGross: parseNumber(i.amountGross),
+              amountNet: parseNumber(i.amountNet),
+            }))
+          );
+        }
+      }
+      if (savedExpenses) {
+        const parsed = JSON.parse(savedExpenses);
+        if (Array.isArray(parsed)) {
+          setExpenses(
+            parsed.map((e: any) => ({
+              ...e,
+              amount: parseNumber(e.amount),
+            }))
+          );
+        }
+      }
+      if (savedLoans) {
+        const parsed = JSON.parse(savedLoans);
+        if (Array.isArray(parsed)) {
+          setLoans(
+            parsed.map((l: any) => ({
+              ...l,
+              originalAmount: parseNumber(l.originalAmount),
+              currentBalance: parseNumber(l.currentBalance),
+              monthlyInterestRate: parseNumber(l.monthlyInterestRate),
+              originalInstallmentAmount: parseNumber(l.originalInstallmentAmount),
+              currentInstallmentAmount: parseNumber(l.currentInstallmentAmount),
+              totalInstallments: parseNumber(l.totalInstallments),
+              paidInstallments: parseNumber(l.paidInstallments),
+            }))
+          );
+        }
+      }
       if (savedAmortizations) setAmortizations(JSON.parse(savedAmortizations));
-      if (savedEmergencyFund) setEmergencyFund(JSON.parse(savedEmergencyFund));
-      if (savedCreditCards) setCreditCards(JSON.parse(savedCreditCards));
-      if (savedInstallments) setInstallments(JSON.parse(savedInstallments));
-      if (savedBenefitCards) setBenefitCards(JSON.parse(savedBenefitCards));
+      if (savedEmergencyFund) {
+        const parsed = JSON.parse(savedEmergencyFund);
+        setEmergencyFund({
+          ...parsed,
+          currentAmount: parseNumber(parsed.currentAmount),
+          targetMonths: parseNumber(parsed.targetMonths, 6),
+          monthlyLivingCostCalculated: parseNumber(parsed.monthlyLivingCostCalculated),
+        });
+      }
+      if (savedCreditCards) {
+        const parsed = JSON.parse(savedCreditCards);
+        if (Array.isArray(parsed)) {
+          setCreditCards(
+            parsed.map((c: any) => ({
+              ...c,
+              totalLimit: parseNumber(c.totalLimit),
+              availableLimit: parseNumber(c.availableLimit),
+              closingDay: parseNumber(c.closingDay, 1),
+              dueDay: parseNumber(c.dueDay, 10),
+            }))
+          );
+        }
+      }
+      if (savedInstallments) {
+        const parsed = JSON.parse(savedInstallments);
+        if (Array.isArray(parsed)) {
+          setInstallments(
+            parsed.map((inst: any) => ({
+              ...inst,
+              totalAmount: parseNumber(inst.totalAmount),
+              installmentAmount: parseNumber(inst.installmentAmount),
+              totalInstallments: parseNumber(inst.totalInstallments),
+              currentInstallment: parseNumber(inst.currentInstallment),
+            }))
+          );
+        }
+      }
+      if (savedBenefitCards) {
+        const parsed = JSON.parse(savedBenefitCards);
+        if (Array.isArray(parsed)) {
+          setBenefitCards(
+            parsed.map((b: any) => ({
+              ...b,
+              currentBalance: parseNumber(b.currentBalance),
+              monthlyDeposit: parseNumber(b.monthlyDeposit),
+              depositDay: parseNumber(b.depositDay, 1),
+            }))
+          );
+        }
+      }
 
       // 3. Sincronização imediata com Neon Postgres para garantir visão unificada em todos os aparelhos
       refreshFromBackend();
@@ -517,71 +711,171 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
     });
   }, [expenses, selectedMonth, selectedYear]);
 
-  // CÁLCULOS: 1. Carteira Livre
-  const freeWallet = useMemo(() => {
-    // Entradas na Carteira Livre (Salário Líquido + Extra + Bônus)
-    const totalIncomeNet = filteredIncomes
-      .filter((inc) => inc.walletType === "FREE")
-      .reduce((sum, inc) => sum + inc.amountNet, 0);
+  // CÁLCULO: 1. Rastreabilidade e Divisão do Casal (Receitas)
+  // Somente receitas efetivamente cadastradas e registradas no banco para o mês selecionado
+  const incomeStats = useMemo(() => {
+    const user1Id = users[0]?.id;
+    const user2Id = users[1]?.id;
 
-    // Saídas já pagas da Carteira Livre (Débito/Pix)
-    const paidExpenses = filteredExpenses.filter(
-      (exp) => exp.isPaid && exp.paymentMethod === "DEBIT_PIX"
+    const totalGross = filteredIncomes.reduce(
+      (sum, inc) => sum + parseNumber(inc.amountGross),
+      0
     );
-    const totalSpentPaid = paidExpenses.reduce((sum, exp) => sum + exp.amount, 0);
-
-    // Saldo atual em conta
-    const currentBalance = totalIncomeNet - totalSpentPaid;
-
-    // Total projetado de todas as despesas da carteira livre (fixos + variáveis no débito/pix + empréstimos + fatura do cartão)
-    const allFreeExpenses = filteredExpenses.filter(
-      (exp) => exp.paymentMethod === "DEBIT_PIX" || exp.paymentMethod === "CREDIT_CARD"
+    const totalNet = filteredIncomes.reduce(
+      (sum, inc) => sum + parseNumber(inc.amountNet),
+      0
     );
-    const projectedExpenses = allFreeExpenses.reduce((sum, exp) => sum + exp.amount, 0);
 
-    // Sobra projetada do mês para o Pote Único (o que pode ir para o Avalanche!)
-    const projectedSurplus = Math.max(0, totalIncomeNet - projectedExpenses);
+    const lucasNet = filteredIncomes
+      .filter((inc) => inc.userId === user1Id || inc.userId === "user-lucas")
+      .reduce((sum, inc) => sum + parseNumber(inc.amountNet), 0);
+
+    const marianaNet = filteredIncomes
+      .filter((inc) => inc.userId === user2Id || inc.userId === "user-mariana")
+      .reduce((sum, inc) => sum + parseNumber(inc.amountNet), 0);
+
+    const totalNetCombined = lucasNet + marianaNet;
+    const lucasProportion =
+      totalNetCombined > 0 ? (lucasNet / totalNetCombined) * 100 : 0;
+    const marianaProportion =
+      totalNetCombined > 0 ? (marianaNet / totalNetCombined) * 100 : 0;
 
     return {
-      totalIncomeNet,
-      totalSpentPaid,
-      currentBalance,
-      projectedExpenses,
-      projectedSurplus,
+      totalGross,
+      totalNet,
+      lucasNet,
+      marianaNet,
+      lucasProportion: Math.round(lucasProportion * 10) / 10,
+      marianaProportion: Math.round(marianaProportion * 10) / 10,
     };
-  }, [filteredIncomes, filteredExpenses]);
+  }, [filteredIncomes, users]);
 
-  // CÁLCULOS: 2. Carteira de Benefícios (VR e VA)
+  // CÁLCULO: 2. Métricas dos Cartões de Crédito & Benefícios (VR/VA)
+  // Valores dos cartões de crédito e benefícios registrados no banco de dados
+  const cardsMetrics = useMemo(() => {
+    const totalCreditLimit = creditCards.reduce(
+      (acc, c) => acc + parseNumber(c.totalLimit),
+      0
+    );
+    const totalAvailableLimit = creditCards.reduce(
+      (acc, c) => acc + parseNumber(c.availableLimit),
+      0
+    );
+    const totalCommittedLimit = Math.max(0, totalCreditLimit - totalAvailableLimit);
+    const totalMonthlyInstallmentsAmount = installments.reduce(
+      (acc, i) => acc + parseNumber(i.installmentAmount),
+      0
+    );
+
+    const totalBenefitBalanceVR = benefitCards
+      .filter((b) => b.type === "VR")
+      .reduce((acc, b) => acc + parseNumber(b.currentBalance), 0);
+
+    const totalBenefitBalanceVA = benefitCards
+      .filter((b) => b.type === "VA")
+      .reduce((acc, b) => acc + parseNumber(b.currentBalance), 0);
+
+    const totalBenefitBalance = totalBenefitBalanceVR + totalBenefitBalanceVA;
+
+    const totalMonthlyBenefitDepositVR = benefitCards
+      .filter((b) => b.type === "VR")
+      .reduce((acc, b) => acc + parseNumber(b.monthlyDeposit), 0);
+
+    const totalMonthlyBenefitDepositVA = benefitCards
+      .filter((b) => b.type === "VA")
+      .reduce((acc, b) => acc + parseNumber(b.monthlyDeposit), 0);
+
+    const totalMonthlyBenefitDeposit = totalMonthlyBenefitDepositVR + totalMonthlyBenefitDepositVA;
+
+    const usedCreditPercentage =
+      totalCreditLimit > 0 ? Math.round((totalCommittedLimit / totalCreditLimit) * 100) : 0;
+
+    return {
+      totalCreditLimit,
+      totalAvailableLimit,
+      totalCommittedLimit,
+      totalMonthlyInstallmentsAmount,
+      totalBenefitBalanceVR,
+      totalBenefitBalanceVA,
+      totalBenefitBalance,
+      totalMonthlyBenefitDeposit,
+      totalMonthlyBenefitDepositVR,
+      totalMonthlyBenefitDepositVA,
+      usedCreditPercentage,
+      activeCardsCount: creditCards.length,
+    };
+  }, [creditCards, installments, benefitCards]);
+
+  // CÁLCULOS: 3. Cartão de Crédito
+  const creditCard = useMemo(() => {
+    const expenseInvoiceAmount = filteredExpenses
+      .filter((exp) => exp.paymentMethod === "CREDIT_CARD")
+      .reduce((sum, exp) => sum + parseNumber(exp.amount), 0);
+
+    const monthlyInstallmentsAmount = cardsMetrics.totalMonthlyInstallmentsAmount;
+    const totalInvoiceAmount = expenseInvoiceAmount + monthlyInstallmentsAmount;
+
+    return {
+      totalInvoiceAmount,
+      expenseInvoiceAmount,
+      monthlyInstallmentsAmount,
+      totalCreditLimit: cardsMetrics.totalCreditLimit,
+      totalAvailableLimit: cardsMetrics.totalAvailableLimit,
+      totalCommittedLimit: cardsMetrics.totalCommittedLimit,
+      usedPercentage: cardsMetrics.usedCreditPercentage,
+      cardsCount: cardsMetrics.activeCardsCount,
+      installmentsCount: installments.length,
+    };
+  }, [filteredExpenses, cardsMetrics, installments.length]);
+
+  // CÁLCULOS: 4. Carteira de Benefícios (VR e VA - Sincronizado com os cartões)
   const benefitsWallet = useMemo(() => {
-    // Entradas VR e VA
+    // 1. Entradas VR e VA por receitas do extrato
     const totalVRReceived = filteredIncomes
       .filter((inc) => inc.walletType === "BENEFITS" && inc.benefitType === "VR")
-      .reduce((sum, inc) => sum + inc.amountNet, 0);
+      .reduce((sum, inc) => sum + parseNumber(inc.amountNet), 0);
 
     const totalVAReceived = filteredIncomes
       .filter((inc) => inc.walletType === "BENEFITS" && inc.benefitType === "VA")
-      .reduce((sum, inc) => sum + inc.amountNet, 0);
+      .reduce((sum, inc) => sum + parseNumber(inc.amountNet), 0);
 
-    // Gastos em VR e VA
+    // 2. Recargas configuradas nos cartões de benefício
+    const cardsVRDeposit = cardsMetrics.totalMonthlyBenefitDepositVR;
+    const cardsVADeposit = cardsMetrics.totalMonthlyBenefitDepositVA;
+    const totalMonthlyDeposit = cardsMetrics.totalMonthlyBenefitDeposit;
+
+    // 3. Gastos no mês em VR e VA
     const totalVRSpent = filteredExpenses
       .filter((exp) => exp.paymentMethod === "VR")
-      .reduce((sum, exp) => sum + exp.amount, 0);
+      .reduce((sum, exp) => sum + parseNumber(exp.amount), 0);
 
     const totalVASpent = filteredExpenses
       .filter((exp) => exp.paymentMethod === "VA")
-      .reduce((sum, exp) => sum + exp.amount, 0);
+      .reduce((sum, exp) => sum + parseNumber(exp.amount), 0);
 
-    const remainingVR = Math.max(0, totalVRReceived - totalVRSpent);
-    const remainingVA = Math.max(0, totalVAReceived - totalVASpent);
+    // 4. Saldo restante: Prioriza os saldos reais preenchidos nos cartões de benefício
+    const hasBenefitCards = benefitCards.length > 0;
+    const remainingVR = hasBenefitCards
+      ? cardsMetrics.totalBenefitBalanceVR
+      : Math.max(0, totalVRReceived - totalVRSpent);
+
+    const remainingVA = hasBenefitCards
+      ? cardsMetrics.totalBenefitBalanceVA
+      : Math.max(0, totalVAReceived - totalVASpent);
+
+    const remainingTotal = remainingVR + remainingVA;
+
+    // 5. Porcentagem de uso
+    const vrBase = totalVRReceived > 0 ? totalVRReceived : cardsVRDeposit;
+    const vaBase = totalVAReceived > 0 ? totalVAReceived : cardsVADeposit;
 
     const vrUsagePercent =
-      totalVRReceived > 0 ? Math.min(100, (totalVRSpent / totalVRReceived) * 100) : 0;
+      totalVRSpent > 0 && vrBase > 0 ? Math.min(100, Math.round((totalVRSpent / vrBase) * 100)) : 0;
     const vaUsagePercent =
-      totalVAReceived > 0 ? Math.min(100, (totalVASpent / totalVAReceived) * 100) : 0;
+      totalVASpent > 0 && vaBase > 0 ? Math.min(100, Math.round((totalVASpent / vaBase) * 100)) : 0;
 
     const totalBenefitsReceived = totalVRReceived + totalVAReceived;
     const totalBenefitsSpent = totalVRSpent + totalVASpent;
-    const remainingTotal = remainingVR + remainingVA;
 
     return {
       totalVRReceived,
@@ -595,63 +889,67 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       totalBenefitsReceived,
       totalBenefitsSpent,
       remainingTotal,
+      cardsMonthlyDepositVR: cardsVRDeposit,
+      cardsMonthlyDepositVA: cardsVADeposit,
+      totalMonthlyDeposit,
+      benefitCardsCount: benefitCards.length,
     };
-  }, [filteredIncomes, filteredExpenses]);
+  }, [filteredIncomes, filteredExpenses, cardsMetrics, benefitCards.length]);
 
-  // CÁLCULOS: 3. Cartão de Crédito
-  const creditCard = useMemo(() => {
-    const totalInvoiceAmount = filteredExpenses
-      .filter((exp) => exp.paymentMethod === "CREDIT_CARD")
-      .reduce((sum, exp) => sum + exp.amount, 0);
+  // CÁLCULOS: 5. Carteira Livre (Pote Único)
+  // Somente receitas e despesas registradas no banco de dados
+  const freeWallet = useMemo(() => {
+    // Entradas na Carteira Livre cadastradas no mês
+    const totalIncomeNet = filteredIncomes
+      .filter((inc) => inc.walletType === "FREE")
+      .reduce((sum, inc) => sum + parseNumber(inc.amountNet), 0);
 
-    return { totalInvoiceAmount };
-  }, [filteredExpenses]);
+    // Saídas já pagas da Carteira Livre (Débito/Pix)
+    const paidExpenses = filteredExpenses.filter(
+      (exp) => exp.isPaid && exp.paymentMethod === "DEBIT_PIX"
+    );
+    const totalSpentPaid = paidExpenses.reduce((sum, exp) => sum + parseNumber(exp.amount), 0);
 
-  // CÁLCULOS: 4. Rastreabilidade e Divisão do Casal (Receitas)
-  const incomeStats = useMemo(() => {
-    const totalGross = filteredIncomes.reduce((sum, inc) => sum + inc.amountGross, 0);
-    const totalNet = filteredIncomes.reduce((sum, inc) => sum + inc.amountNet, 0);
+    // Saldo atual em conta
+    const currentBalance = totalIncomeNet - totalSpentPaid;
 
-    const user1Id = users[0]?.id;
-    const user2Id = users[1]?.id;
+    // Despesas projetadas da carteira livre (débito/pix + cartão + parcelamentos ativos)
+    const allFreeExpenses = filteredExpenses.filter(
+      (exp) => exp.paymentMethod === "DEBIT_PIX" || exp.paymentMethod === "CREDIT_CARD"
+    );
+    const manualExpensesTotal = allFreeExpenses.reduce(
+      (sum, exp) => sum + parseNumber(exp.amount),
+      0
+    );
 
-    const lucasNet = filteredIncomes
-      .filter((inc) => inc.userId === user1Id || inc.userId === "user-lucas")
-      .reduce((sum, inc) => sum + inc.amountNet, 0);
+    // Inclui parcelas ativas de cartão de crédito registradas
+    const projectedExpenses = manualExpensesTotal + parseNumber(creditCard.monthlyInstallmentsAmount);
 
-    const marianaNet = filteredIncomes
-      .filter((inc) => inc.userId === user2Id || inc.userId === "user-mariana")
-      .reduce((sum, inc) => sum + inc.amountNet, 0);
-
-    const totalNetCombined = lucasNet + marianaNet;
-    const lucasProportion =
-      totalNetCombined > 0 ? (lucasNet / totalNetCombined) * 100 : 50;
-    const marianaProportion =
-      totalNetCombined > 0 ? (marianaNet / totalNetCombined) * 100 : 50;
+    // Sobra projetada do mês para o Pote Único (o que pode ir para o Avalanche!)
+    const projectedSurplus = Math.max(0, totalIncomeNet - projectedExpenses);
 
     return {
-      totalGross,
-      totalNet,
-      lucasNet,
-      marianaNet,
-      lucasProportion: Math.round(lucasProportion * 10) / 10,
-      marianaProportion: Math.round(marianaProportion * 10) / 10,
+      totalIncomeNet,
+      totalSpentPaid,
+      currentBalance,
+      projectedExpenses,
+      projectedSurplus,
     };
-  }, [filteredIncomes, users]);
+  }, [filteredIncomes, filteredExpenses, creditCard.monthlyInstallmentsAmount]);
 
-  // CÁLCULOS: 5. Despesas por Tipo e Rastreabilidade
+  // CÁLCULOS: 6. Despesas por Tipo e Rastreabilidade
   const expenseStats = useMemo(() => {
     const totalFixed = filteredExpenses
       .filter((exp) => exp.expenseType === "FIXED")
-      .reduce((sum, exp) => sum + exp.amount, 0);
+      .reduce((sum, exp) => sum + parseNumber(exp.amount), 0);
 
     const totalLoans = filteredExpenses
       .filter((exp) => exp.expenseType === "LOAN")
-      .reduce((sum, exp) => sum + exp.amount, 0);
+      .reduce((sum, exp) => sum + parseNumber(exp.amount), 0);
 
     const totalVariable = filteredExpenses
       .filter((exp) => exp.expenseType === "VARIABLE")
-      .reduce((sum, exp) => sum + exp.amount, 0);
+      .reduce((sum, exp) => sum + parseNumber(exp.amount), 0);
 
     const totalGeneral = totalFixed + totalLoans + totalVariable;
 
@@ -660,14 +958,14 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
 
     const lucasSpent = filteredExpenses
       .filter((exp) => exp.userId === user1Id || exp.userId === "user-lucas")
-      .reduce((sum, exp) => sum + exp.amount, 0);
+      .reduce((sum, exp) => sum + parseNumber(exp.amount), 0);
 
     const marianaSpent = filteredExpenses
       .filter((exp) => exp.userId === user2Id || exp.userId === "user-mariana")
-      .reduce((sum, exp) => sum + exp.amount, 0);
+      .reduce((sum, exp) => sum + parseNumber(exp.amount), 0);
 
-    const lucasSpentPercent = totalGeneral > 0 ? (lucasSpent / totalGeneral) * 100 : 50;
-    const marianaSpentPercent = totalGeneral > 0 ? (marianaSpent / totalGeneral) * 100 : 50;
+    const lucasSpentPercent = totalGeneral > 0 ? (lucasSpent / totalGeneral) * 100 : 0;
+    const marianaSpentPercent = totalGeneral > 0 ? (marianaSpent / totalGeneral) * 100 : 0;
 
     return {
       totalFixed,
@@ -1420,11 +1718,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
     [benefitCards, syncWithBackend]
   );
 
-  const updateBenefitCardBalance = useCallback(
-    (id: string, newBalance: number) => {
+  const updateBenefitCard = useCallback(
+    (id: string, cardData: Partial<BenefitCard>) => {
       const prevBenefits = benefitCards;
       setBenefitCards((prev) =>
-        prev.map((c) => (c.id === id ? { ...c, currentBalance: newBalance } : c))
+        prev.map((c) => (c.id === id ? { ...c, ...cardData } : c))
       );
 
       syncWithBackend(
@@ -1432,12 +1730,19 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
           fetch("/api/finances", {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ entity: "benefitCard", id, data: { currentBalance: newBalance } }),
+            body: JSON.stringify({ entity: "benefitCard", id, data: cardData }),
           }),
         () => setBenefitCards(prevBenefits)
       );
     },
     [benefitCards, syncWithBackend]
+  );
+
+  const updateBenefitCardBalance = useCallback(
+    (id: string, newBalance: number) => {
+      updateBenefitCard(id, { currentBalance: newBalance });
+    },
+    [updateBenefitCard]
   );
 
   const deleteBenefitCard = useCallback(
@@ -1452,43 +1757,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
     },
     [benefitCards, syncWithBackend]
   );
-
-  // CÁLCULO: Métricas dos Cartões
-  const cardsMetrics = useMemo(() => {
-    const totalCreditLimit = creditCards.reduce((acc, c) => acc + c.totalLimit, 0);
-    const totalAvailableLimit = creditCards.reduce((acc, c) => acc + c.availableLimit, 0);
-    const totalCommittedLimit = Math.max(0, totalCreditLimit - totalAvailableLimit);
-    const totalMonthlyInstallmentsAmount = installments.reduce(
-      (acc, i) => acc + i.installmentAmount,
-      0
-    );
-
-    const totalBenefitBalanceVR = benefitCards
-      .filter((b) => b.type === "VR")
-      .reduce((acc, b) => acc + b.currentBalance, 0);
-
-    const totalBenefitBalanceVA = benefitCards
-      .filter((b) => b.type === "VA")
-      .reduce((acc, b) => acc + b.currentBalance, 0);
-
-    const totalBenefitBalance = totalBenefitBalanceVR + totalBenefitBalanceVA;
-
-    const totalMonthlyBenefitDeposit = benefitCards.reduce(
-      (acc, b) => acc + b.monthlyDeposit,
-      0
-    );
-
-    return {
-      totalCreditLimit,
-      totalAvailableLimit,
-      totalCommittedLimit,
-      totalMonthlyInstallmentsAmount,
-      totalBenefitBalanceVR,
-      totalBenefitBalanceVA,
-      totalBenefitBalance,
-      totalMonthlyBenefitDeposit,
-    };
-  }, [creditCards, installments, benefitCards]);
 
   // Atualização do Perfil do Integrante (Nome, Foto, Salários, Benefícios)
   const updateUserProfile = useCallback(
@@ -1642,6 +1910,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       addInstallment,
       deleteInstallment,
       addBenefitCard,
+      updateBenefitCard,
       updateBenefitCardBalance,
       deleteBenefitCard,
       updateUserProfile,
@@ -1693,6 +1962,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       addInstallment,
       deleteInstallment,
       addBenefitCard,
+      updateBenefitCard,
       updateBenefitCardBalance,
       deleteBenefitCard,
       updateUserProfile,

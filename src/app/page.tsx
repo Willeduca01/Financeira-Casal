@@ -151,7 +151,7 @@ function DashboardContent() {
               <AvalancheAlertCard onOpenAmortize={handleOpenAmortize} />
 
               {/* Cards de Resumo Rápido e Carteiras */}
-              <SummaryCards />
+              <SummaryCards onNavigateTab={setActiveTab} />
 
               {/* Seção de Gráficos Visuais */}
               <ChartsSection />

@@ -12,21 +12,25 @@ interface AvalancheAlertCardProps {
 export const AvalancheAlertCard: React.FC<AvalancheAlertCardProps> = ({
   onOpenAmortize,
 }) => {
-  const { avalanche, freeWallet } = useFinance();
+  const { avalanche, freeWallet, loans } = useFinance();
   const { targetLoan, estimatedSavingsOnTarget } = avalanche;
 
   if (!targetLoan) {
+    const hadLoans = loans && loans.length > 0;
     return (
       <div className="rounded-[28px] p-6 bg-[#7A8B68] text-[#FBF9F5] shadow-[0_8px_30px_rgba(122,139,104,0.15)] text-center space-y-2">
         <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center mx-auto text-[#FBF9F5]">
           <Sprout size={26} />
         </div>
         <h3 className="font-serif text-lg font-bold text-[#FBF9F5]">
-          Parabéns! Todas as dívidas foram quitadas!
+          {hadLoans
+            ? "Parabéns! Todas as dívidas foram quitadas!"
+            : "Nenhuma dívida ativa cadastrada"}
         </h3>
         <p className="text-xs text-[#FBF9F5]/90 max-w-md mx-auto leading-relaxed">
-          O casal conquistou a liberdade das dívidas. Agora 100% dos excedentes do Pote Único vão
-          direto para cultivar a Reserva de Emergência e projetos futuros!
+          {hadLoans
+            ? "O casal conquistou a liberdade das dívidas. Agora 100% dos excedentes do Pote Único vão direto para cultivar a Reserva de Emergência e projetos futuros!"
+            : "Sem empréstimos ou dívidas ativas registradas no banco. Os excedentes do Pote Único podem ir direto para cultivar a Reserva de Emergência e projetos futuros!"}
         </p>
       </div>
     );
