@@ -1,8 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react";
-import bcrypt from "bcryptjs";
-import { signIn, signOut } from "next-auth/react";
+import { useSession, signIn, signOut } from "next-auth/react";
 import {
   User,
   CoupleSettings,
@@ -35,9 +34,9 @@ import { sortLoansByAvalanche, estimateInterestSavings } from "@/lib/utils";
 interface FinanceContextType {
   // Autenticação & Perfil do Casal
   isAuthenticated: boolean;
-  login: (userId: string, pin: string, remember?: boolean) => { success: boolean; message?: string };
+  login: (userId: string, pin: string, remember?: boolean) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
-  updateUserPin: (userId: string, oldPin: string, newPin: string) => { success: boolean; message?: string };
+  updateUserPin: (userId: string, oldPin: string, newPin: string) => Promise<{ success: boolean; message?: string }>;
 
   // Usuário Ativo
   currentUser: User;
@@ -214,12 +213,16 @@ const parseNumber = (val: any, fallback = 0): number => {
 export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
+  const { data: session, status } = useSession();
+  const isAuthenticated = status === "authenticated";
+
   // Carregamento com suporte a LocalStorage e Mock inicial
   const [isClient, setIsClient] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [users, setUsers] = useState<User[]>(INITIAL_USERS);
-  const [currentUserId, setCurrentUserId] = useState<string>("cmvgv5a7p0000uai46r748p2a");
+  const [localUserId, setLocalUserId] = useState<string>("cmvgv5a7p0000uai46r748p2a");
+  const currentUserId = session?.user?.id || localUserId;
+  const setCurrentUserId = setLocalUserId;
   const [coupleSettings, setCoupleSettings] = useState<CoupleSettings>(INITIAL_COUPLE_SETTINGS);
 
   const [selectedMonth, setSelectedMonth] = useState<number>(9); // Outubro
@@ -240,9 +243,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       setIsSyncing(true);
       const res = await fetch("/api/finances", {
         cache: "no-store",
-        headers: {
-          "x-couple-user-id": currentUserId,
-        },
       });
       if (!res.ok) return;
       const data = await res.json();
@@ -378,7 +378,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       const savedBenefitCards = localStorage.getItem(STORAGE_KEY_PREFIX + "benefitCards");
       const savedCoupleSettings = localStorage.getItem(STORAGE_KEY_PREFIX + "coupleSettings");
 
-      if (savedAuth === "true") setIsAuthenticated(true);
       if (savedUsers) {
         const parsed = JSON.parse(savedUsers);
         if (Array.isArray(parsed)) {
@@ -487,21 +486,31 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
         }
       }
 
-      // 3. Sincronização imediata com Neon Postgres para garantir visão unificada em todos os aparelhos
-      refreshFromBackend();
     } catch (e) {
       console.warn("Erro ao ler do LocalStorage:", e);
     }
 
-    // 4. Re-sincronizar sempre que o usuário retornar ao app / aba no celular ou PC
+    // 3. Re-sincronizar apenas quando o usuário retornar ao app autenticado
     const handleWindowFocus = () => {
-      refreshFromBackend();
+      if (status === "authenticated") {
+        refreshFromBackend();
+      }
     };
     window.addEventListener("focus", handleWindowFocus);
     return () => {
       window.removeEventListener("focus", handleWindowFocus);
     };
-  }, [refreshFromBackend]);
+  }, [status, refreshFromBackend]);
+
+  // Sincronização pós-autenticação segura via NextAuth
+  useEffect(() => {
+    if (status === "authenticated") {
+      const timer = setTimeout(() => {
+        void refreshFromBackend();
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [status, refreshFromBackend]);
 
   // Salvar alterações
   useEffect(() => {
@@ -567,133 +576,91 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
     [isClient]
   );
 
-  // Autenticação Segura do Integrante (Bcrypt sem texto puro)
+  // Autenticação Segura via NextAuth Credentials no Servidor (Sem comparação de PIN no cliente)
   const login = useCallback(
-    (
+    async (
       userId: string,
       pin: string,
       remember: boolean = true
-    ): { success: boolean; message?: string } => {
-      const user = users.find((u) => u.id === userId);
-      if (!user) {
-        return { success: false, message: "Integrante não encontrado." };
-      }
-
-      const storedHash = user.pinHash || user.pin;
-      let isValid = false;
-
-      if (storedHash) {
-        // Se for um hash bcrypt válido ($2a$ ou $2b$)
-        if (storedHash.startsWith("$2a$") || storedHash.startsWith("$2b$")) {
-          try {
-            isValid = bcrypt.compareSync(pin.trim(), storedHash);
-          } catch {
-            isValid = false;
-          }
-        } else {
-          // Migração defensiva caso ainda exista texto puro em localStorage antigo
-          isValid = pin.trim() === storedHash;
-          if (isValid) {
-            const newSecureHash = bcrypt.hashSync(pin.trim(), 10);
-            setUsers((prev) =>
-              prev.map((u) =>
-                u.id === userId
-                  ? { ...u, pin: newSecureHash, pinHash: newSecureHash }
-                  : u
-              )
-            );
-          }
-        }
-      }
-
-      if (!isValid) {
-        return { success: false, message: "PIN incorreto. Tente novamente." };
-      }
-
-      setCurrentUserId(userId);
-      setIsAuthenticated(true);
-
-      if (remember && isClient) {
-        localStorage.setItem(STORAGE_KEY_PREFIX + "isAuthenticated", "true");
-        localStorage.setItem(STORAGE_KEY_PREFIX + "currentUserId", userId);
-      }
-
-      // Estabelecer sessão JWT segura via NextAuth no servidor para proteger as chamadas de API
+    ): Promise<{ success: boolean; message?: string }> => {
       try {
-        signIn("credentials", {
+        const res = await signIn("credentials", {
           redirect: false,
-          email: user.email,
+          userId,
           password: pin.trim(),
-        })
-          .then((res: any) => {
-            if (res && !res.error) {
-              refreshFromBackend();
-            }
-          })
-          .catch((err: any) => {
-            console.warn("[AUTH] Falha ao sincronizar cookie de sessão NextAuth:", err);
-          });
-      } catch (e) {
-        // Ignorar caso em modo offline
-      }
+        });
 
-      return { success: true };
+        if (!res || res.error || !res.ok) {
+          return { success: false, message: "PIN incorreto ou usuário não autorizado." };
+        }
+
+        setLocalUserId(userId);
+
+        if (remember && isClient) {
+          localStorage.setItem(STORAGE_KEY_PREFIX + "isAuthenticated", "true");
+          localStorage.setItem(STORAGE_KEY_PREFIX + "currentUserId", userId);
+        }
+
+        await refreshFromBackend();
+        return { success: true };
+      } catch (err) {
+        console.error("[AUTH_LOGIN_ERROR]", err);
+        return { success: false, message: "Erro de comunicação ao validar credenciais." };
+      }
     },
-    [users, isClient, refreshFromBackend]
+    [isClient, refreshFromBackend]
   );
 
   const logout = useCallback(() => {
-    setIsAuthenticated(false);
-    localStorage.removeItem(STORAGE_KEY_PREFIX + "isAuthenticated");
+    if (isClient) {
+      localStorage.removeItem(STORAGE_KEY_PREFIX + "isAuthenticated");
+      localStorage.removeItem(STORAGE_KEY_PREFIX + "currentUserId");
+    }
     try {
       signOut({ redirect: false }).catch(() => {});
     } catch {}
-  }, []);
+  }, [isClient]);
 
+  // Troca de PIN Segura no Servidor (Validação do PIN atual via bcrypt no servidor)
   const updateUserPin = useCallback(
-    (
-      userId: string,
+    async (
+      _userId: string,
       oldPin: string,
       newPin: string
-    ): { success: boolean; message?: string } => {
-      const user = users.find((u) => u.id === userId);
-      if (!user) return { success: false, message: "Integrante não encontrado." };
-
-      const storedHash = user.pinHash || user.pin;
-      let isOldValid = false;
-
-      if (storedHash) {
-        if (storedHash.startsWith("$2a$") || storedHash.startsWith("$2b$")) {
-          try {
-            isOldValid = bcrypt.compareSync(oldPin.trim(), storedHash);
-          } catch {
-            isOldValid = false;
-          }
-        } else {
-          isOldValid = oldPin.trim() === storedHash;
-        }
-      }
-
-      if (!isOldValid) {
-        return { success: false, message: "PIN atual incorreto." };
-      }
-
+    ): Promise<{ success: boolean; message?: string }> => {
       if (newPin.trim().length < 4) {
         return { success: false, message: "O novo PIN deve ter pelo menos 4 dígitos." };
       }
 
-      // Gerar hash seguro do novo PIN via bcrypt (salt 10) - Nunca armazenar texto puro
-      const newHashedPin = bcrypt.hashSync(newPin.trim(), 10);
+      try {
+        const res = await fetch("/api/finances", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            entity: "user",
+            id: currentUserId,
+            data: {
+              currentPin: oldPin.trim(),
+              newPin: newPin.trim(),
+            },
+          }),
+        });
 
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.id === userId ? { ...u, pin: newHashedPin, pinHash: newHashedPin } : u
-        )
-      );
+        const data = await res.json();
+        if (!res.ok) {
+          return {
+            success: false,
+            message: data.message || data.error || "Erro ao atualizar PIN no servidor.",
+          };
+        }
 
-      return { success: true, message: "PIN alterado e protegido com hash criptográfico!" };
+        return { success: true, message: "PIN alterado com sucesso no servidor!" };
+      } catch (err) {
+        console.error("[UPDATE_PIN_ERROR]", err);
+        return { success: false, message: "Falha de comunicação ao alterar PIN." };
+      }
     },
-    [users]
+    [currentUserId]
   );
 
   // Filtragem de movimentações do mês/ano selecionado
@@ -1772,7 +1739,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
             method: "PUT",
             headers: {
               "Content-Type": "application/json",
-              "x-couple-user-id": userId,
             },
             body: JSON.stringify({
               entity: "user",
@@ -1800,7 +1766,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
             method: "PUT",
             headers: {
               "Content-Type": "application/json",
-              "x-couple-user-id": currentUserId,
             },
             body: JSON.stringify({
               entity: "coupleSettings",
@@ -1813,7 +1778,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
         }
       );
     },
-    [coupleSettings, currentUserId, syncWithBackend]
+    [coupleSettings, syncWithBackend]
   );
 
   // Limpeza de todos os dados transacionais (começar do zero com dados reais)
@@ -1851,21 +1816,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
         keysToRemove.forEach((k) => localStorage.removeItem(k));
       } catch {}
     }
-
-    try {
-      await fetch("/api/finances", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          entity: "clearData",
-          data: { confirm: true },
-        }),
-      });
-      await refreshFromBackend();
-    } catch (e) {
-      console.warn("Aviso ao sincronizar limpeza de dados:", e);
-    }
-  }, [refreshFromBackend]);
+  }, []);
 
   // Resetar dados para o padrão limpo
   const resetAllData = useCallback(() => {

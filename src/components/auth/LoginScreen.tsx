@@ -2,47 +2,45 @@
 
 import React, { useState, useEffect } from "react";
 import { useFinance } from "@/context/FinanceContext";
-import { User } from "@/types";
-import { Lock, Delete, Heart, Sparkles, ShieldCheck, ArrowLeft, KeyRound } from "lucide-react";
+import { Lock, Delete, Heart, ShieldCheck, ArrowLeft } from "lucide-react";
 import confetti from "canvas-confetti";
+
+interface PublicProfile {
+  id: string;
+  name: string;
+  avatar?: string;
+}
 
 export const LoginScreen: React.FC = () => {
   const { users, login } = useFinance();
 
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [profiles, setProfiles] = useState<PublicProfile[]>([]);
+  const [selectedUser, setSelectedUser] = useState<PublicProfile | null>(null);
   const [pin, setPin] = useState<string>("");
   const [errorMsg, setErrorMsg] = useState<string>("");
   const [rememberMe, setRememberMe] = useState<boolean>(true);
   const [isShaking, setIsShaking] = useState<boolean>(false);
 
-  // Escutar digitação física no teclado (Desktop)
+  // Carregar perfis públicos mínimos do servidor (sem expor hashes ou dados financeiros)
   useEffect(() => {
-    if (!selectedUser) return;
+    fetch("/api/profiles")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setProfiles(data);
+        } else {
+          setProfiles(users.map((u) => ({ id: u.id, name: u.name, avatar: u.avatar })));
+        }
+      })
+      .catch(() => {
+        setProfiles(users.map((u) => ({ id: u.id, name: u.name, avatar: u.avatar })));
+      });
+  }, [users]);
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key >= "0" && e.key <= "9") {
-        handleDigitPress(e.key);
-      } else if (e.key === "Backspace") {
-        handleBackspace();
-      } else if (e.key === "Escape") {
-        handleBackToUsers();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedUser, pin]);
-
-  const handleDigitPress = (digit: string) => {
-    if (pin.length >= 4) return;
-    const newPin = pin + digit;
-    setPin(newPin);
+  const handleBackToUsers = () => {
+    setSelectedUser(null);
+    setPin("");
     setErrorMsg("");
-
-    // Se completou 4 dígitos, valida automaticamente
-    if (newPin.length === 4 && selectedUser) {
-      submitPin(selectedUser.id, newPin);
-    }
   };
 
   const handleBackspace = () => {
@@ -55,8 +53,8 @@ export const LoginScreen: React.FC = () => {
     setErrorMsg("");
   };
 
-  const submitPin = (userId: string, pinToTest: string) => {
-    const res = login(userId, pinToTest, rememberMe);
+  const submitPin = async (userId: string, pinToTest: string) => {
+    const res = await login(userId, pinToTest, rememberMe);
     if (res.success) {
       try {
         confetti({
@@ -78,17 +76,41 @@ export const LoginScreen: React.FC = () => {
     }
   };
 
-  const handleSelectUser = (user: User) => {
+  const handleDigitPress = (digit: string) => {
+    if (pin.length >= 4) return;
+    const newPin = pin + digit;
+    setPin(newPin);
+    setErrorMsg("");
+
+    // Se completou 4 dígitos, valida automaticamente
+    if (newPin.length === 4 && selectedUser) {
+      submitPin(selectedUser.id, newPin);
+    }
+  };
+
+  const handleSelectUser = (user: PublicProfile) => {
     setSelectedUser(user);
     setPin("");
     setErrorMsg("");
   };
 
-  const handleBackToUsers = () => {
-    setSelectedUser(null);
-    setPin("");
-    setErrorMsg("");
-  };
+  // Escutar digitação física no teclado (Desktop)
+  useEffect(() => {
+    if (!selectedUser) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key >= "0" && e.key <= "9") {
+        handleDigitPress(e.key);
+      } else if (e.key === "Backspace") {
+        handleBackspace();
+      } else if (e.key === "Escape") {
+        handleBackToUsers();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedUser, pin]);
 
   return (
     <div className="min-h-screen bg-[#F4EFE6] text-[#2C221E] flex flex-col justify-between p-4 sm:p-6 selection:bg-[#C46D53]/25 relative overflow-hidden">
@@ -127,7 +149,10 @@ export const LoginScreen: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-3.5 sm:gap-4">
-              {users.map((user) => (
+              {(profiles.length > 0
+                ? profiles
+                : users.map((u) => ({ id: u.id, name: u.name, avatar: u.avatar }))
+              ).map((user) => (
                 <button
                   key={user.id}
                   onClick={() => handleSelectUser(user)}
@@ -135,7 +160,7 @@ export const LoginScreen: React.FC = () => {
                 >
                   <div className="relative mb-3">
                     <img
-                      src={user.avatar}
+                      src={user.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80"}
                       alt={user.name}
                       className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover ring-4 ring-[#E6DEC8] group-hover:ring-[#C46D53] transition-all shadow-md"
                     />
@@ -152,14 +177,6 @@ export const LoginScreen: React.FC = () => {
                   </span>
                 </button>
               ))}
-            </div>
-
-            {/* Dica amigável de demonstração */}
-            <div className="bg-[#FBF9F5] border border-[#E6DEC8] p-3 rounded-2xl text-center text-xs text-[#786B5E] flex items-center justify-center gap-1.5 shadow-xs">
-              <KeyRound size={14} className="text-[#C46D53] shrink-0" />
-              <span>
-                PIN padrão inicial: <strong>1234</strong> para ambos
-              </span>
             </div>
           </div>
         ) : (
@@ -256,7 +273,7 @@ export const LoginScreen: React.FC = () => {
             </div>
 
             {/* Opção Lembrar Neste Aparelho */}
-            <div className="flex items-center justify-between pt-2 border-t border-[#E6DEC8] text-xs text-[#786B5E]">
+            <div className="flex items-center justify-start pt-2 border-t border-[#E6DEC8] text-xs text-[#786B5E]">
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input
                   type="checkbox"
@@ -266,13 +283,6 @@ export const LoginScreen: React.FC = () => {
                 />
                 <span>Lembrar neste aparelho</span>
               </label>
-
-              <button
-                onClick={() => handleSelectUser(selectedUser)}
-                className="text-[11px] text-[#C46D53] font-semibold hover:underline"
-              >
-                Esqueci o PIN (1234)
-              </button>
             </div>
           </div>
         )}

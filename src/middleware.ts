@@ -82,12 +82,19 @@ export function middleware(request: NextRequest) {
   // Definição das políticas conforme requisitos de segurança
   let rule: RateLimitRule | null = null;
 
-  if (pathname.startsWith("/api/auth")) {
-    // 1. Autenticação e troca de credenciais: 5 requisições a cada 15 minutos
+  if (pathname.startsWith("/api/auth/callback") || pathname === "/api/auth/signin") {
+    // 1. Tentativas de login e autenticação com credenciais (proteção anti-força bruta)
     rule = {
-      limit: 5,
-      windowMs: 15 * 60 * 1000, // 15 minutos (900.000 ms)
+      limit: 10,
+      windowMs: 5 * 60 * 1000, // 5 minutos
       ruleName: "auth-sensitive",
+    };
+  } else if (pathname.startsWith("/api/auth")) {
+    // 2. Verificação de sessão NextAuth e CSRF do cliente
+    rule = {
+      limit: 100,
+      windowMs: 60 * 1000, // 1 minuto
+      ruleName: "auth-session",
     };
   } else if (pathname.startsWith("/api/finances")) {
     // 2. Operações de leitura/escrita financeira: 60 requisições por minuto

@@ -1,5 +1,15 @@
 declare module "lucide-react";
-declare module "next-auth";
-declare module "next-auth/providers/credentials";
-declare module "next-auth/react";
-declare module "next-auth/next";
+
+import type { DefaultSession } from "next-auth";
+
+declare module "next-auth" {
+  interface Session {
+    user?: {
+      id?: string;
+    } & DefaultSession["user"];
+  }
+
+  interface User {
+    id?: string;
+  }
+}

@@ -52,7 +52,6 @@ const UserEditCard: React.FC<UserEditFormProps> = ({ user, onSave, partnerName, 
   const [salaryGross, setSalaryGross] = useState(user.salaryGross.toString());
   const [vrAmount, setVrAmount] = useState(user.vrAmount.toString());
   const [vaAmount, setVaAmount] = useState(user.vaAmount.toString());
-  const [newPin, setNewPin] = useState("");
   const [showAvatarPresets, setShowAvatarPresets] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -107,18 +106,8 @@ const UserEditCard: React.FC<UserEditFormProps> = ({ user, onSave, partnerName, 
         vaAmount: parseFloat(vaAmount) || 0,
       };
 
-      if (newPin.trim()) {
-        if (!/^\d{4}$/.test(newPin.trim())) {
-          alert("O PIN de acesso rápido deve conter exatamente 4 dígitos numéricos.");
-          setIsSaving(false);
-          return;
-        }
-        updateData.pin = newPin.trim();
-      }
-
       await onSave(updateData);
       setSaveSuccess(true);
-      setNewPin("");
 
       try {
         confetti({
@@ -343,23 +332,15 @@ const UserEditCard: React.FC<UserEditFormProps> = ({ user, onSave, partnerName, 
           </div>
         </div>
 
-        {/* Segurança: Novo PIN de 4 dígitos */}
-        <div className="p-3 bg-[#F4EFE6] rounded-2xl border border-[#E6DEC8]/60 space-y-1.5">
+        {/* Segurança: Proteção de PIN */}
+        <div className="p-3 bg-[#F4EFE6] rounded-2xl border border-[#E6DEC8]/60 space-y-1">
           <div className="flex items-center gap-1.5 text-xs font-bold text-[#2C221E]">
             <KeyRound size={14} className="text-[#C46D53]" />
-            <span>Definir novo PIN de 4 dígitos (Opcional)</span>
+            <span>Segurança do PIN</span>
           </div>
           <p className="text-[11px] text-[#786B5E]">
-            Deixe em branco para manter o PIN atual. Caso preenchido, deve conter 4 números.
+            Para alterar seu PIN de 4 dígitos, utilize o menu do seu perfil no topo da página (requer confirmação do PIN atual).
           </p>
-          <input
-            type="password"
-            maxLength={4}
-            value={newPin}
-            onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ""))}
-            placeholder="Ex: 1234"
-            className="w-36 px-3 py-2 rounded-xl bg-[#FBF9F5] border border-[#E6DEC8] text-center tracking-widest text-sm font-black text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#C46D53]/40"
-          />
         </div>
 
         {/* Botão Salvar Integrante */}

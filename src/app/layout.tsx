@@ -37,6 +37,8 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
+import { AuthProvider } from "@/components/providers/AuthProvider";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -48,7 +50,7 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
       </head>
       <body className="min-h-screen bg-[#F4EFE6] text-[#2C221E] antialiased font-sans selection:bg-[#C46D53]/20 selection:text-[#2C221E]">
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

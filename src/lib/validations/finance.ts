@@ -273,6 +273,8 @@ export const UpdateUserSchema = z.object({
   vrAmount: nonNegativeMonetary("Valor do VR").optional(),
   vaAmount: nonNegativeMonetary("Valor do VA").optional(),
   incomeProportion: z.number().min(0).max(100).optional(),
+  currentPin: z.string().regex(/^\d{4}$/, "PIN atual deve conter exatamente 4 dígitos numéricos").optional(),
+  newPin: z.string().regex(/^\d{4}$/, "Novo PIN deve conter exatamente 4 dígitos numéricos").optional(),
   pin: z.string().regex(/^\d{4}$/, "PIN deve conter exatamente 4 dígitos numéricos").optional(),
 });
 
@@ -281,10 +283,6 @@ export const UpdateCoupleSettingsSchema = z.object({
   emergencyFundMonthsTarget: z.number().int().min(1).max(24).optional(),
   user1SalaryProportion: z.number().min(0).max(100).optional(),
   user2SalaryProportion: z.number().min(0).max(100).optional(),
-});
-
-export const ClearDataSchema = z.object({
-  confirm: z.literal(true),
 });
 
 /**
@@ -301,7 +299,6 @@ export const FinancePostActionSchema = z.discriminatedUnion("entity", [
   z.object({ entity: z.literal("amortization"), data: CreateLoanAmortizationSchema }),
   z.object({ entity: z.literal("emergencyDeposit"), data: CreateEmergencyDepositSchema }),
   z.object({ entity: z.literal("payInstallment"), data: PayLoanInstallmentSchema }),
-  z.object({ entity: z.literal("clearData"), data: ClearDataSchema }),
 ]);
 
 export const FinancePutActionSchema = z.discriminatedUnion("entity", [
@@ -309,7 +306,7 @@ export const FinancePutActionSchema = z.discriminatedUnion("entity", [
   z.object({ entity: z.literal("income"), id: validId, data: UpdateIncomeSchema }),
   z.object({ entity: z.literal("creditCard"), id: validId, data: UpdateCreditCardSchema }),
   z.object({ entity: z.literal("benefitCard"), id: validId, data: UpdateBenefitCardSchema }),
-  z.object({ entity: z.literal("user"), id: validId, data: UpdateUserSchema }),
+  z.object({ entity: z.literal("user"), id: validId.optional(), data: UpdateUserSchema }),
   z.object({ entity: z.literal("coupleSettings"), id: z.string().default("default"), data: UpdateCoupleSettingsSchema }),
 ]);
 

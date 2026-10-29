@@ -21,7 +21,7 @@ export const ChangePinModal: React.FC<ChangePinModalProps> = ({ isOpen, onClose 
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFeedback(null);
 
@@ -35,7 +35,7 @@ export const ChangePinModal: React.FC<ChangePinModalProps> = ({ isOpen, onClose 
       return;
     }
 
-    const res = updateUserPin(currentUser.id, currentPin, newPin);
+    const res = await updateUserPin(currentUser.id, currentPin, newPin);
     if (res.success) {
       setFeedback({ type: "success", message: res.message || "PIN alterado com sucesso!" });
       setTimeout(() => {

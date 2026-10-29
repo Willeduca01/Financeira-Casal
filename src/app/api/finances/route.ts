@@ -45,65 +45,42 @@ function serializeDecimals(obj: any): any {
   return obj;
 }
 
-// Helper para validação da sessão com suporte multi-dispositivo, PWA e persistência contínua
-async function getAuthenticatedUserSession(request?: NextRequest) {
-  // 1. Tentar validar via NextAuth Cookie (JWT)
+// Serializer central para expor somente campos seguros do integrante (Prevenção de vazamento de pinHash/passwordHash)
+function toPublicUser(user: any) {
+  if (!user) return null;
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    avatar: user.avatar,
+    role: user.role,
+    salaryGross: Number(user.salaryGross) || 0,
+    salaryNet: Number(user.salaryNet) || 0,
+    vrAmount: Number(user.vrAmount) || 0,
+    vaAmount: Number(user.vaAmount) || 0,
+    incomeProportion: Number(user.incomeProportion) || 50,
+  };
+}
+
+// Autenticação estrita EXCLUSIVAMENTE via sessão NextAuth do servidor (Sem headers inseguros ou fallbacks)
+async function getAuthenticatedUserSession() {
   try {
     const session = await getServerSession(authOptions);
-    if (session?.user && (session.user as any).id) {
-      return {
-        id: (session.user as any).id as string,
-        email: session.user.email as string,
-        name: session.user.name as string,
-      };
-    }
-  } catch (e) {
-    // NextAuth lookup fallback
-  }
-
-  // 2. Fallback autorizado para o ecossistema do casal:
-  try {
-    const headerUserId = request?.headers.get("x-couple-user-id");
-    if (headerUserId) {
-      const user = await prisma.user.findUnique({
-        where: { id: headerUserId },
-        select: { id: true, email: true, name: true },
-      });
-      if (user) return user;
-
-      // Suporte a IDs legados/aliases caso o frontend envie
-      if (headerUserId === "user-lucas" || headerUserId === "user-1") {
-        const firstUser = await prisma.user.findFirst({
-          orderBy: { createdAt: "asc" },
-          select: { id: true, email: true, name: true },
-        });
-        if (firstUser) return firstUser;
-      }
-      if (headerUserId === "user-mariana" || headerUserId === "user-2") {
-        const allUsers = await prisma.user.findMany({
-          orderBy: { createdAt: "asc" },
-          select: { id: true, email: true, name: true },
-          take: 2,
-        });
-        if (allUsers[1]) return allUsers[1];
-        if (allUsers[0]) return allUsers[0];
-      }
+    const userId = session?.user?.id;
+    if (!userId) {
+      return null;
     }
 
-    // Se o banco Neon possui os integrantes do casal cadastrados,
-    // autorizar com o usuário principal para persistência contínua
-    const defaultUser = await prisma.user.findFirst({
-      orderBy: { createdAt: "asc" },
-      select: { id: true, email: true, name: true },
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, name: true, role: true },
     });
-    if (defaultUser) {
-      return defaultUser;
-    }
-  } catch (dbError) {
-    console.warn("[AUTH_FALLBACK_WARN] Falha ao verificar integrante no banco:", dbError);
-  }
 
-  return null;
+    return user;
+  } catch (e) {
+    console.error("[AUTH_SESSION_EXCEPTION]", e);
+    return null;
+  }
 }
 
 /**
@@ -116,50 +93,16 @@ async function getAuthenticatedUserSession(request?: NextRequest) {
 export async function GET(request: NextRequest) {
   const startTime = performance.now();
   try {
-    const authUser = await getAuthenticatedUserSession(request);
+    const authUser = await getAuthenticatedUserSession();
     if (!authUser) {
-      // Retornar perfis do casal para a tela de login sem dados transacionais
-      // Garante que mesmo deslogado o cliente sincronize os nomes e fotos reais sem expor contas
-      const [users, coupleSettings] = await Promise.all([
-        prisma.user.findMany({
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            avatar: true,
-            role: true,
-            salaryGross: true,
-            salaryNet: true,
-            vrAmount: true,
-            vaAmount: true,
-            incomeProportion: true,
-            pinHash: true,
-          },
-        }),
-        prisma.coupleSettings.findFirst(),
-      ]);
-
       return NextResponse.json(
         {
-          authenticated: false,
-          users,
-          coupleSettings,
-          loans: [],
-          incomes: [],
-          expenses: [],
-          creditCards: [],
-          installments: [],
-          benefitCards: [],
-          emergencyFund: {
-            id: "fund-default",
-            currentAmount: 0,
-            targetMonths: coupleSettings?.emergencyFundMonthsTarget || 6,
-            monthlyLivingCostCalculated: 0,
-            notes: "Reserva de emergência pronta para aportes reais",
-          },
+          error: "Não autorizado",
+          message: "Sessão inválida ou ausente. Faça login para acessar os dados financeiros.",
+          statusCode: 401,
         },
         {
-          status: 200,
+          status: 401,
           headers: {
             "Cache-Control": "private, no-cache, no-store, must-revalidate",
           },
@@ -244,7 +187,6 @@ export async function GET(request: NextRequest) {
           vrAmount: true,
           vaAmount: true,
           incomeProportion: true,
-          pinHash: true,
         },
       }),
       prisma.loan.findMany({
@@ -293,8 +235,8 @@ export async function GET(request: NextRequest) {
         source: "neon-postgres",
         authenticated: true,
         authenticatedUserId: authUser.id,
-        users,
-        currentUser,
+        users: users.map(toPublicUser),
+        currentUser: toPublicUser(currentUser),
         loans,
         incomes,
         expenses,
@@ -336,7 +278,7 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const authUser = await getAuthenticatedUserSession(request);
+    const authUser = await getAuthenticatedUserSession();
     if (!authUser) {
       return NextResponse.json(
         {
@@ -415,7 +357,7 @@ export async function POST(request: NextRequest) {
             availableLimit: action.data.availableLimit,
             closingDay: action.data.closingDay,
             dueDay: action.data.dueDay,
-            userId: action.data.userId || sessionUserId,
+            userId: sessionUserId,
           },
         });
         return NextResponse.json({ success: true, data: newCard }, { status: 201 });
@@ -461,7 +403,7 @@ export async function POST(request: NextRequest) {
             depositDay: action.data.depositDay,
             color: action.data.color,
             lastFourDigits: action.data.lastFourDigits,
-            userId: action.data.userId || sessionUserId,
+            userId: sessionUserId,
           },
         });
         return NextResponse.json({ success: true, data: newBenefitCard }, { status: 201 });
@@ -568,30 +510,6 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({ success: true, data: updated });
       }
-
-      case "clearData": {
-        await prisma.creditCardInstallment.deleteMany({});
-        await prisma.expense.deleteMany({});
-        await prisma.creditCard.deleteMany({});
-        await prisma.benefitCard.deleteMany({});
-        await prisma.loanAmortization.deleteMany({});
-        await prisma.emergencyDeposit.deleteMany({});
-        await prisma.income.deleteMany({});
-        await prisma.loan.deleteMany({});
-        await prisma.emergencyFund.deleteMany({});
-        await prisma.emergencyFund.create({
-          data: {
-            currentAmount: 0,
-            targetMonths: 6,
-            monthlyLivingCostCalculated: 0,
-            notes: "Reserva de emergência pronta para aportes reais",
-          },
-        });
-        return NextResponse.json({
-          success: true,
-          message: "Todos os lançamentos foram limpos com sucesso.",
-        });
-      }
     }
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -625,7 +543,7 @@ export async function POST(request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
   try {
-    const authUser = await getAuthenticatedUserSession(request);
+    const authUser = await getAuthenticatedUserSession();
     if (!authUser) {
       return NextResponse.json(
         { error: "Não autorizado", message: "Sessão inválida.", statusCode: 401 },
@@ -646,6 +564,12 @@ export async function PUT(request: NextRequest) {
           return NextResponse.json(
             { error: "Despesa não encontrada", statusCode: 404 },
             { status: 404 }
+          );
+        }
+        if (existing.userId !== sessionUserId) {
+          return NextResponse.json(
+            { error: "Acesso negado", message: "Você não tem permissão para alterar esta despesa.", statusCode: 403 },
+            { status: 403 }
           );
         }
 
@@ -673,6 +597,12 @@ export async function PUT(request: NextRequest) {
             { status: 404 }
           );
         }
+        if (existing.userId !== sessionUserId) {
+          return NextResponse.json(
+            { error: "Acesso negado", message: "Você não tem permissão para alterar este cartão.", statusCode: 403 },
+            { status: 403 }
+          );
+        }
 
         const updated = await prisma.creditCard.update({
           where: { id: action.id },
@@ -689,6 +619,12 @@ export async function PUT(request: NextRequest) {
           return NextResponse.json(
             { error: "Cartão benefício não encontrado", statusCode: 404 },
             { status: 404 }
+          );
+        }
+        if (existing.userId !== sessionUserId) {
+          return NextResponse.json(
+            { error: "Acesso negado", message: "Você não tem permissão para alterar este cartão benefício.", statusCode: 403 },
+            { status: 403 }
           );
         }
 
@@ -709,6 +645,12 @@ export async function PUT(request: NextRequest) {
             { status: 404 }
           );
         }
+        if (existing.userId !== sessionUserId) {
+          return NextResponse.json(
+            { error: "Acesso negado", message: "Você não tem permissão para alterar esta receita.", statusCode: 403 },
+            { status: 403 }
+          );
+        }
 
         const updated = await prisma.income.update({
           where: { id: action.id },
@@ -724,17 +666,14 @@ export async function PUT(request: NextRequest) {
       }
 
       case "user": {
-        let targetId = action.id;
+        // IDOR PREVENTED: Usuário só pode editar o próprio perfil (sessionUserId)
+        const targetId = sessionUserId;
         const existingUser = await prisma.user.findUnique({ where: { id: targetId } });
         if (!existingUser) {
-          const allUsers = await prisma.user.findMany({ orderBy: { createdAt: "asc" } });
-          if (action.id === "user-lucas" || action.id === "user-1") {
-            targetId = allUsers[0]?.id || targetId;
-          } else if (action.id === "user-mariana" || action.id === "user-2") {
-            targetId = allUsers[1]?.id || allUsers[0]?.id || targetId;
-          } else if (allUsers.length > 0) {
-            targetId = allUsers[0].id;
-          }
+          return NextResponse.json(
+            { error: "Usuário não encontrado", statusCode: 404 },
+            { status: 404 }
+          );
         }
 
         const updateData: any = {};
@@ -746,15 +685,52 @@ export async function PUT(request: NextRequest) {
         if (action.data.vrAmount !== undefined) updateData.vrAmount = action.data.vrAmount;
         if (action.data.vaAmount !== undefined) updateData.vaAmount = action.data.vaAmount;
         if (action.data.incomeProportion !== undefined) updateData.incomeProportion = action.data.incomeProportion;
-        if (action.data.pin) {
-          updateData.pinHash = await bcrypt.hash(action.data.pin, 10);
+
+        // Troca de PIN: exige o PIN atual antes de gravar o novo (bcrypt.compare)
+        const newPin = action.data.newPin || action.data.pin;
+        if (newPin) {
+          if (!action.data.currentPin) {
+            return NextResponse.json(
+              {
+                error: "PIN atual obrigatório",
+                message: "Para alterar o PIN, informe o PIN atual para confirmação.",
+                statusCode: 400,
+              },
+              { status: 400 }
+            );
+          }
+
+          if (!existingUser.pinHash) {
+            return NextResponse.json(
+              {
+                error: "PIN não configurado",
+                message: "Usuário não possui hash de PIN registrado.",
+                statusCode: 400,
+              },
+              { status: 400 }
+            );
+          }
+
+          const isValid = await bcrypt.compare(action.data.currentPin, existingUser.pinHash);
+          if (!isValid) {
+            return NextResponse.json(
+              {
+                error: "PIN atual incorreto",
+                message: "O PIN atual informado está incorreto.",
+                statusCode: 400,
+              },
+              { status: 400 }
+            );
+          }
+
+          updateData.pinHash = await bcrypt.hash(newPin, 10);
         }
 
         const updated = await prisma.user.update({
           where: { id: targetId },
           data: updateData,
         });
-        return NextResponse.json({ success: true, data: updated });
+        return NextResponse.json({ success: true, data: toPublicUser(updated) });
       }
 
       case "coupleSettings": {
@@ -806,7 +782,7 @@ export async function PUT(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    const authUser = await getAuthenticatedUserSession(request);
+    const authUser = await getAuthenticatedUserSession();
     if (!authUser) {
       return NextResponse.json(
         { error: "Não autorizado", message: "Sessão inválida.", statusCode: 401 },
@@ -834,6 +810,12 @@ export async function DELETE(request: NextRequest) {
             { status: 404 }
           );
         }
+        if (existing.userId !== sessionUserId) {
+          return NextResponse.json(
+            { error: "Acesso negado", message: "Você não tem permissão para excluir esta despesa.", statusCode: 403 },
+            { status: 403 }
+          );
+        }
 
         await prisma.expense.delete({ where: { id: query.id } });
         return NextResponse.json({ success: true, message: "Despesa excluída com sucesso." });
@@ -847,6 +829,12 @@ export async function DELETE(request: NextRequest) {
           return NextResponse.json(
             { error: "Receita não encontrada", statusCode: 404 },
             { status: 404 }
+          );
+        }
+        if (existing.userId !== sessionUserId) {
+          return NextResponse.json(
+            { error: "Acesso negado", message: "Você não tem permissão para excluir esta receita.", statusCode: 403 },
+            { status: 403 }
           );
         }
 
@@ -864,6 +852,12 @@ export async function DELETE(request: NextRequest) {
             { status: 404 }
           );
         }
+        if (existing.userId !== sessionUserId) {
+          return NextResponse.json(
+            { error: "Acesso negado", message: "Você não tem permissão para excluir este cartão.", statusCode: 403 },
+            { status: 403 }
+          );
+        }
 
         await prisma.creditCard.delete({ where: { id: query.id } });
         return NextResponse.json({ success: true, message: "Cartão excluído com sucesso." });
@@ -879,6 +873,12 @@ export async function DELETE(request: NextRequest) {
             { status: 404 }
           );
         }
+        if (existing.userId !== sessionUserId) {
+          return NextResponse.json(
+            { error: "Acesso negado", message: "Você não tem permissão para excluir esta parcela.", statusCode: 403 },
+            { status: 403 }
+          );
+        }
 
         await prisma.creditCardInstallment.delete({ where: { id: query.id } });
         return NextResponse.json({ success: true, message: "Parcela excluída com sucesso." });
@@ -892,6 +892,12 @@ export async function DELETE(request: NextRequest) {
           return NextResponse.json(
             { error: "Cartão benefício não encontrado", statusCode: 404 },
             { status: 404 }
+          );
+        }
+        if (existing.userId !== sessionUserId) {
+          return NextResponse.json(
+            { error: "Acesso negado", message: "Você não tem permissão para excluir este cartão benefício.", statusCode: 403 },
+            { status: 403 }
           );
         }
 
