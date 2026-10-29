@@ -41,12 +41,14 @@ export const authOptions: AuthOptions = {
         }
 
         // 2. Verificação de senha / PIN usando comparação de Hash Bcrypt no servidor
-        const storedHash = userRecord.passwordHash || userRecord.pinHash;
-        if (!storedHash) {
-          return null;
+        let isValid = false;
+        if (userRecord.pinHash) {
+          isValid = await bcrypt.compare(credentials.password, userRecord.pinHash);
+        }
+        if (!isValid && userRecord.passwordHash) {
+          isValid = await bcrypt.compare(credentials.password, userRecord.passwordHash);
         }
 
-        const isValid = await bcrypt.compare(credentials.password, storedHash);
         if (!isValid) {
           return null;
         }
