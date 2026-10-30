@@ -98,6 +98,8 @@ interface FinanceContextType {
   ) => void;
   payMonthlyInstallment: (loanId: string) => void;
   addEmergencyDeposit: (amount: number, notes?: string) => void;
+  updateEmergencyFund: (data: Partial<EmergencyFund>) => Promise<void>;
+  withdrawEmergencyFund: (amount: number, notes?: string, createIncomeTransaction?: boolean) => Promise<void>;
   
   // Ações CRUD Cartões & Benefícios
   addCreditCard: (card: Omit<CreditCard, "id">) => void;
@@ -1786,6 +1788,74 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
     [emergencyFund, expenses, currentUser.id, addExpense, syncWithBackend]
   );
 
+  const updateEmergencyFund = useCallback(
+    async (data: Partial<EmergencyFund>) => {
+      const prevFund = emergencyFund;
+      setEmergencyFund((prev) => ({
+        ...prev,
+        ...data,
+      }));
+
+      await syncWithBackend(
+        () =>
+          fetch("/api/finances", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              entity: "emergencyFund",
+              id: emergencyFund.id || "fund-1",
+              data,
+            }),
+          }),
+        () => setEmergencyFund(prevFund)
+      );
+    },
+    [emergencyFund, syncWithBackend]
+  );
+
+  const withdrawEmergencyFund = useCallback(
+    async (amount: number, notes?: string, createIncomeTransaction = false) => {
+      if (amount <= 0) return;
+      const prevFund = emergencyFund;
+      const newAmount = Math.max(0, emergencyFund.currentAmount - amount);
+
+      setEmergencyFund((prev) => ({
+        ...prev,
+        currentAmount: newAmount,
+      }));
+
+      if (createIncomeTransaction) {
+        addIncome({
+          description: `Resgate Reserva de Emergência (${notes || "Uso imprevisto"})`,
+          amountGross: amount,
+          amountNet: amount,
+          category: "EXTRA",
+          walletType: "FREE",
+          receivedAt: new Date().toISOString(),
+          userId: currentUser.id,
+        });
+      }
+
+      await syncWithBackend(
+        () =>
+          fetch("/api/finances", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              entity: "emergencyFund",
+              id: emergencyFund.id || "fund-1",
+              data: {
+                currentAmount: newAmount,
+                notes: notes ? `Resgate: R$ ${amount.toFixed(2)} - ${notes}` : prevFund.notes,
+              },
+            }),
+          }),
+        () => setEmergencyFund(prevFund)
+      );
+    },
+    [emergencyFund, currentUser.id, addIncome, syncWithBackend]
+  );
+
   // AÇÕES: Cartões de Crédito (Optimistic UI com Rollback)
   const addCreditCard = useCallback(
     (cardData: Omit<CreditCard, "id">) => {
@@ -2159,6 +2229,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       amortizeLoan,
       payMonthlyInstallment,
       addEmergencyDeposit,
+      updateEmergencyFund,
+      withdrawEmergencyFund,
       addCreditCard,
       updateCreditCard,
       deleteCreditCard,
@@ -2216,6 +2288,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       amortizeLoan,
       payMonthlyInstallment,
       addEmergencyDeposit,
+      updateEmergencyFund,
+      withdrawEmergencyFund,
       addCreditCard,
       updateCreditCard,
       deleteCreditCard,

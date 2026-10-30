@@ -336,6 +336,13 @@ export const UpdateCoupleSettingsSchema = z.object({
   user2SalaryProportion: z.number().min(0).max(100).optional(),
 });
 
+export const UpdateEmergencyFundSchema = z.object({
+  currentAmount: nonNegativeMonetary("Saldo da reserva").optional(),
+  targetMonths: z.number().int().min(1).max(36).optional(),
+  monthlyLivingCostCalculated: nonNegativeMonetary("Custo de vida calculado").optional(),
+  notes: optionalSanitizedString(255),
+});
+
 /**
  * ==============================================================================
  * DISPATCHER ACTION SCHEMAS (POST, PUT, DELETE)
@@ -363,6 +370,7 @@ export const FinancePutActionSchema = z.discriminatedUnion("entity", [
   z.object({ entity: z.literal("loan"), id: validId, data: UpdateLoanSchema }),
   z.object({ entity: z.literal("user"), id: validId.optional(), data: UpdateUserSchema }),
   z.object({ entity: z.literal("coupleSettings"), id: z.string().default("default"), data: UpdateCoupleSettingsSchema }),
+  z.object({ entity: z.literal("emergencyFund"), id: z.string().optional(), data: UpdateEmergencyFundSchema }),
 ]);
 
 export const FinanceDeleteQuerySchema = z.object({

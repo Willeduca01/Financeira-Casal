@@ -1011,6 +1011,39 @@ export async function PUT(request: NextRequest) {
         }
         return NextResponse.json({ success: true, data: updated });
       }
+
+      case "emergencyFund": {
+        const existingFund = await prisma.emergencyFund.findFirst();
+        let updated;
+        if (existingFund) {
+          updated = await prisma.emergencyFund.update({
+            where: { id: existingFund.id },
+            data: {
+              ...(action.data.currentAmount !== undefined && { currentAmount: action.data.currentAmount }),
+              ...(action.data.targetMonths !== undefined && { targetMonths: action.data.targetMonths }),
+              ...(action.data.monthlyLivingCostCalculated !== undefined && { monthlyLivingCostCalculated: action.data.monthlyLivingCostCalculated }),
+              ...(action.data.notes !== undefined && { notes: action.data.notes }),
+            },
+          });
+        } else {
+          updated = await prisma.emergencyFund.create({
+            data: {
+              currentAmount: action.data.currentAmount ?? 0,
+              targetMonths: action.data.targetMonths ?? 6,
+              monthlyLivingCostCalculated: action.data.monthlyLivingCostCalculated ?? 0,
+              notes: action.data.notes || "Reserva de emergência pronta para aportes reais do casal.",
+            },
+          });
+        }
+        return NextResponse.json({
+          success: true,
+          data: {
+            ...updated,
+            currentAmount: Number(updated.currentAmount),
+            monthlyLivingCostCalculated: Number(updated.monthlyLivingCostCalculated),
+          },
+        });
+      }
     }
   } catch (error) {
     if (error instanceof z.ZodError) {
