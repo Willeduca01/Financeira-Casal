@@ -209,6 +209,8 @@ interface FinanceContextType {
   emergencyFundMetrics: {
     currentAmount: number;
     monthlyLivingCost: number;
+    autoCalculatedLivingCost: number;
+    isCustomLivingCost: boolean;
     targets: {
       threeMonths: number;
       sixMonths: number;
@@ -1026,9 +1028,14 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // CÁLCULOS: 7. Reserva de Emergência
   const emergencyFundMetrics = useMemo(() => {
-    // Custo de vida mensal = Gastos Fixos + Parcelas + Gastos Variáveis Essenciais
-    const monthlyLivingCost =
-      expenseStats.totalFixedAndLoans + Math.max(1500, expenseStats.totalVariable * 0.85);
+    // Custo de vida mensal automático = Gastos Fixos + Parcelas + Gastos Variáveis Essenciais (mínimo 1500)
+    const autoLivingCost = Math.round(
+      expenseStats.totalFixedAndLoans + Math.max(1500, expenseStats.totalVariable * 0.85)
+    );
+
+    const customCost = Number(emergencyFund.monthlyLivingCostCalculated || 0);
+    const isCustomLivingCost = customCost > 0;
+    const monthlyLivingCost = isCustomLivingCost ? customCost : autoLivingCost;
 
     const targetMonths = emergencyFund.targetMonths || 6;
     const targetAmount = monthlyLivingCost * targetMonths;
@@ -1039,6 +1046,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
     return {
       currentAmount,
       monthlyLivingCost: Math.round(monthlyLivingCost),
+      autoCalculatedLivingCost: autoLivingCost,
+      isCustomLivingCost,
       targets: {
         threeMonths: Math.round(monthlyLivingCost * 3),
         sixMonths: Math.round(monthlyLivingCost * 6),

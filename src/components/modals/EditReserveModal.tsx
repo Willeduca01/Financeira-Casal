@@ -14,12 +14,18 @@ export const EditReserveModal: React.FC<EditReserveModalProps> = ({ isOpen, onCl
 
   const [currentAmount, setCurrentAmount] = useState<string>("");
   const [targetMonths, setTargetMonths] = useState<number>(6);
+  const [livingCost, setLivingCost] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
 
   useEffect(() => {
     if (emergencyFund) {
       setCurrentAmount(String(emergencyFund.currentAmount || 0));
       setTargetMonths(emergencyFund.targetMonths || 6);
+      setLivingCost(
+        emergencyFund.monthlyLivingCostCalculated > 0
+          ? String(emergencyFund.monthlyLivingCostCalculated)
+          : ""
+      );
       setNotes(emergencyFund.notes || "");
     }
   }, [emergencyFund, isOpen]);
@@ -31,9 +37,12 @@ export const EditReserveModal: React.FC<EditReserveModalProps> = ({ isOpen, onCl
     const parsedAmount = parseFloat(currentAmount.replace(",", "."));
     if (isNaN(parsedAmount) || parsedAmount < 0) return;
 
+    const parsedLivingCost = livingCost.trim() ? parseFloat(livingCost.replace(",", ".")) : 0;
+
     await updateEmergencyFund({
       currentAmount: parsedAmount,
       targetMonths: targetMonths || 6,
+      monthlyLivingCostCalculated: !isNaN(parsedLivingCost) && parsedLivingCost > 0 ? parsedLivingCost : 0,
       notes: notes.trim() || undefined,
     });
 
@@ -88,6 +97,39 @@ export const EditReserveModal: React.FC<EditReserveModalProps> = ({ isOpen, onCl
             </div>
             <p className="text-[10px] text-[#786B5E] mt-1">
               Informe o valor que o casal já possui guardado em contas com liquidez diária (CDB, Nubank Caixinhas, Tesouro Selic, etc.).
+            </p>
+          </div>
+
+          {/* Custo de Vida Mensal Base */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-bold text-[#786B5E] uppercase tracking-wider">
+                Custo de Vida Mensal (R$)
+              </label>
+              {livingCost && (
+                <button
+                  type="button"
+                  onClick={() => setLivingCost("")}
+                  className="text-[10px] font-bold text-[#7A8B68] hover:underline"
+                >
+                  Usar Automático ({emergencyFundMetrics.autoCalculatedLivingCost.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })})
+                </button>
+              )}
+            </div>
+            <div className="relative">
+              <span className="absolute left-3.5 top-2.5 text-sm font-bold text-[#786B5E]">
+                R$
+              </span>
+              <input
+                type="text"
+                value={livingCost}
+                onChange={(e) => setLivingCost(e.target.value)}
+                placeholder={`Automático (${emergencyFundMetrics.autoCalculatedLivingCost.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })})`}
+                className="w-full pl-10 pr-4 py-2 rounded-xl border border-[#E8DFD1] bg-[#F4EFE6]/40 text-[#2C221E] font-bold text-sm focus:outline-hidden focus:border-[#7A8B68]"
+              />
+            </div>
+            <p className="text-[10px] text-[#786B5E] mt-1">
+              Deixe em branco para usar o cálculo automático dinâmico ou informe um valor personalizado.
             </p>
           </div>
 

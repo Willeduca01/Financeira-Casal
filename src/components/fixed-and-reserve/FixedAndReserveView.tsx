@@ -26,6 +26,7 @@ import { EditReserveModal } from "@/components/modals/EditReserveModal";
 import { WithdrawReserveModal } from "@/components/modals/WithdrawReserveModal";
 import { NewFixedExpenseModal } from "@/components/modals/NewFixedExpenseModal";
 import { EditFixedExpenseModal } from "@/components/modals/EditFixedExpenseModal";
+import { EditLivingCostModal } from "@/components/modals/EditLivingCostModal";
 
 export const FixedAndReserveView: React.FC = () => {
   const {
@@ -43,6 +44,7 @@ export const FixedAndReserveView: React.FC = () => {
   const [showDepositModal, setShowDepositModal] = useState<boolean>(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState<boolean>(false);
   const [showEditReserveModal, setShowEditReserveModal] = useState<boolean>(false);
+  const [showEditLivingCostModal, setShowEditLivingCostModal] = useState<boolean>(false);
   const [showNewExpenseModal, setShowNewExpenseModal] = useState<boolean>(false);
   const [showEditExpenseModal, setShowEditExpenseModal] = useState<boolean>(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
@@ -197,16 +199,35 @@ export const FixedAndReserveView: React.FC = () => {
         {/* Resumo de Custo de Vida, Saldo Guardado e Meta */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
           {/* Custo de Vida */}
-          <div className="bg-[#F4EFE6] border border-[#E8DFD1] p-4 rounded-2xl relative">
-            <span className="text-[11px] text-[#786B5E] font-medium block">
-              Custo de Vida Mensal:
-            </span>
+          <div className="bg-[#F4EFE6] border border-[#E8DFD1] p-4 rounded-2xl relative group">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-[#786B5E] font-medium block">
+                Custo de Vida Mensal:
+              </span>
+              <button
+                onClick={() => setShowEditLivingCostModal(true)}
+                className="text-[10px] text-[#7A8B68] hover:underline flex items-center gap-1 font-bold"
+                title="Ajustar ou personalizar o custo de vida mensal do casal"
+              >
+                <Pencil size={11} />
+                Editar
+              </button>
+            </div>
             <p className="font-serif text-xl font-black text-[#2C221E] mt-0.5">
               {formatBRL(emergencyFundMetrics.monthlyLivingCost)}
             </p>
-            <p className="text-[10px] text-[#786B5E] mt-0.5">
-              Fixos ({formatBRL(totalFixedAmount)}) + variáveis essenciais
-            </p>
+            {emergencyFundMetrics.isCustomLivingCost ? (
+              <p className="text-[10px] text-[#556943] font-semibold mt-0.5 flex items-center gap-1">
+                <span>Personalizado pelo casal</span>
+                <span className="text-[#A89F91] font-normal">
+                  (Auto: {formatBRL(emergencyFundMetrics.autoCalculatedLivingCost)})
+                </span>
+              </p>
+            ) : (
+              <p className="text-[10px] text-[#786B5E] mt-0.5">
+                Fixos ({formatBRL(totalFixedAmount)}) + variáveis essenciais
+              </p>
+            )}
           </div>
 
           {/* Saldo Guardado Atual */}
@@ -636,6 +657,12 @@ export const FixedAndReserveView: React.FC = () => {
           setEditingExpense(null);
         }}
         expense={editingExpense}
+      />
+
+      {/* MODAL 6: Editar Custo de Vida Mensal */}
+      <EditLivingCostModal
+        isOpen={showEditLivingCostModal}
+        onClose={() => setShowEditLivingCostModal(false)}
       />
     </div>
   );
