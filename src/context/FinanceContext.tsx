@@ -6,6 +6,8 @@ import {
   User,
   CoupleSettings,
   Loan,
+  LoanPayment,
+  LoanStrategy,
   Income,
   Expense,
   LoanAmortization,
@@ -67,6 +69,22 @@ interface FinanceContextType {
   toggleFixedExpensePaid: (id: string) => void;
   addIncome: (income: Omit<Income, "id" | "userId"> & { userId?: string }) => void;
   deleteIncome: (id: string) => void;
+
+  // Gestão de Empréstimos do Casal
+  addLoan: (loan: Omit<Loan, "id" | "totalSaved" | "currentBalance"> & { id?: string; totalSaved?: number; currentBalance?: number }) => void;
+  updateLoan: (id: string, updated: Partial<Loan>) => void;
+  deleteLoan: (id: string) => void;
+  payRegularLoanInstallment: (loanId: string, createTransaction?: boolean) => void;
+  amortizeLoanEarly: (payload: {
+    loanId: string;
+    installmentsAbated: number;
+    originalValue: number;
+    paidValue: number;
+    strategy: LoanStrategy;
+    newInstallmentAmount?: number;
+    registerTransaction?: boolean;
+    notes?: string;
+  }) => void;
   amortizeLoan: (
     loanId: string,
     params: {
@@ -210,6 +228,52 @@ const parseNumber = (val: any, fallback = 0): number => {
   return isNaN(parsed) ? fallback : parsed;
 };
 
+const normalizeLoan = (l: any): Loan => {
+  const title = l.title || l.name || "Empréstimo";
+  const institution = l.institution || l.bank || "Banco";
+  const principalAmount = parseNumber(l.principalAmount ?? l.originalAmount);
+  const installmentAmount = parseNumber(l.installmentAmount ?? l.currentInstallmentAmount);
+  const interestRate = parseNumber(l.interestRate ?? l.monthlyInterestRate);
+  const totalInstallments = parseNumber(l.totalInstallments, 1);
+  const paidInstallments = parseNumber(l.paidInstallments, 0);
+  const remaining = Math.max(0, totalInstallments - paidInstallments);
+  const currentBalance = parseNumber(l.currentBalance, remaining * installmentAmount);
+  const totalSaved = parseNumber(l.totalSaved, 0);
+
+  return {
+    ...l,
+    id: l.id,
+    title,
+    name: title,
+    institution,
+    bank: institution,
+    profileId: l.profileId || null,
+    principalAmount,
+    originalAmount: principalAmount,
+    installmentAmount,
+    currentInstallmentAmount: installmentAmount,
+    interestRate,
+    monthlyInterestRate: interestRate,
+    totalInstallments,
+    paidInstallments,
+    dueDay: parseNumber(l.dueDay, 10),
+    startDate: l.startDate || new Date().toISOString(),
+    status: l.status || (remaining <= 0 ? "PAID_OFF" : "ACTIVE"),
+    totalSaved,
+    currentBalance,
+    notes: l.notes || undefined,
+    payments: Array.isArray(l.payments)
+      ? l.payments.map((p: any) => ({
+          ...p,
+          originalValue: parseNumber(p.originalValue),
+          paidValue: parseNumber(p.paidValue),
+          savedAmount: parseNumber(p.savedAmount),
+          installmentsAbated: parseNumber(p.installmentsAbated),
+        }))
+      : [],
+  };
+};
+
 export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
@@ -265,18 +329,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
 
       if (data?.authenticated) {
         if (data.loans !== undefined) {
-          setLoans(
-            data.loans.map((l: any) => ({
-              ...l,
-              originalAmount: parseNumber(l.originalAmount),
-              currentBalance: parseNumber(l.currentBalance),
-              monthlyInterestRate: parseNumber(l.monthlyInterestRate),
-              originalInstallmentAmount: parseNumber(l.originalInstallmentAmount),
-              currentInstallmentAmount: parseNumber(l.currentInstallmentAmount),
-              totalInstallments: parseNumber(l.totalInstallments),
-              paidInstallments: parseNumber(l.paidInstallments),
-            }))
-          );
+          setLoans(data.loans.map(normalizeLoan));
         }
         if (data.expenses !== undefined) {
           setExpenses(
@@ -420,18 +473,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       if (savedLoans) {
         const parsed = JSON.parse(savedLoans);
         if (Array.isArray(parsed)) {
-          setLoans(
-            parsed.map((l: any) => ({
-              ...l,
-              originalAmount: parseNumber(l.originalAmount),
-              currentBalance: parseNumber(l.currentBalance),
-              monthlyInterestRate: parseNumber(l.monthlyInterestRate),
-              originalInstallmentAmount: parseNumber(l.originalInstallmentAmount),
-              currentInstallmentAmount: parseNumber(l.currentInstallmentAmount),
-              totalInstallments: parseNumber(l.totalInstallments),
-              paidInstallments: parseNumber(l.paidInstallments),
-            }))
-          );
+          setLoans(parsed.map(normalizeLoan));
         }
       }
       if (savedAmortizations) setAmortizations(JSON.parse(savedAmortizations));
@@ -955,16 +997,17 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
 
     const totalDebtBalance = activeLoans.reduce((sum, l) => sum + l.currentBalance, 0);
     const totalMonthlyInstallments = activeLoans.reduce(
-      (sum, l) => sum + l.currentInstallmentAmount,
+      (sum, l) => sum + (l.installmentAmount ?? l.currentInstallmentAmount ?? 0),
       0
     );
 
     const suggestedAmortizationAmount = freeWallet.projectedSurplus;
 
+    const targetRate = targetLoan ? (targetLoan.interestRate ?? targetLoan.monthlyInterestRate ?? 0) : 0;
     const estimatedSavingsOnTarget = targetLoan
       ? estimateInterestSavings(
           suggestedAmortizationAmount > 0 ? suggestedAmortizationAmount : 1000,
-          targetLoan.monthlyInterestRate,
+          targetRate,
           targetLoan.totalInstallments - targetLoan.paidInstallments
         )
       : 0;
@@ -1300,11 +1343,12 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       const isPaidOff = newBalance <= 0;
 
       let updatedTotalInstallments = loan.totalInstallments;
-      let updatedInstallmentAmount = loan.currentInstallmentAmount;
+      const currentInst = loan.installmentAmount ?? loan.currentInstallmentAmount ?? 1;
+      let updatedInstallmentAmount = currentInst;
 
       if (params.abatementType === "REDUCE_TERM") {
         const reduced =
-          params.installmentsReduced || Math.ceil(totalAbated / loan.currentInstallmentAmount);
+          params.installmentsReduced || Math.ceil(totalAbated / Math.max(1, currentInst));
         updatedTotalInstallments = Math.max(loan.paidInstallments, loan.totalInstallments - reduced);
       } else if (params.abatementType === "REDUCE_INSTALLMENT" && params.newInstallmentAmount) {
         updatedInstallmentAmount = params.newInstallmentAmount;
@@ -1391,9 +1435,115 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
     [loans, amortizations, expenses, currentUser.id, addExpense, syncWithBackend]
   );
 
-  // Pagar Parcela Mensal do Empréstimo
-  const payMonthlyInstallment = useCallback(
-    (loanId: string) => {
+  // GESTÃO DE EMPRÉSTIMOS DO CASAL
+  const addLoan = useCallback(
+    (loanData: Omit<Loan, "id" | "totalSaved" | "currentBalance"> & { id?: string; totalSaved?: number; currentBalance?: number }) => {
+      const tempId = loanData.id || "temp-loan-" + Date.now();
+      const newLoan = normalizeLoan({
+        ...loanData,
+        id: tempId,
+      });
+
+      const prevLoans = loans;
+      setLoans((prev) => [newLoan, ...prev]);
+
+      syncWithBackend(
+        () =>
+          fetch("/api/finances", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              entity: "loan",
+              data: {
+                title: newLoan.title,
+                institution: newLoan.institution,
+                profileId: newLoan.profileId || undefined,
+                principalAmount: newLoan.principalAmount,
+                installmentAmount: newLoan.installmentAmount,
+                interestRate: newLoan.interestRate,
+                totalInstallments: newLoan.totalInstallments,
+                paidInstallments: newLoan.paidInstallments,
+                dueDay: newLoan.dueDay,
+                startDate: newLoan.startDate,
+                status: newLoan.status,
+                notes: newLoan.notes,
+              },
+            }),
+          }),
+        () => setLoans(prevLoans),
+        (savedData) => {
+          if (savedData?.id) {
+            setLoans((prev) =>
+              prev.map((l) => (l.id === tempId ? normalizeLoan({ ...l, ...savedData, payments: l.payments }) : l))
+            );
+          }
+        }
+      );
+    },
+    [loans, syncWithBackend]
+  );
+
+  const updateLoan = useCallback(
+    (id: string, updatedData: Partial<Loan>) => {
+      const existing = loans.find((l) => l.id === id);
+      if (!existing) return;
+
+      const merged = normalizeLoan({ ...existing, ...updatedData });
+      const prevLoans = loans;
+      setLoans((prev) => prev.map((l) => (l.id === id ? merged : l)));
+
+      syncWithBackend(
+        () =>
+          fetch("/api/finances", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              entity: "loan",
+              id,
+              data: {
+                title: merged.title,
+                institution: merged.institution,
+                profileId: merged.profileId || undefined,
+                principalAmount: merged.principalAmount,
+                installmentAmount: merged.installmentAmount,
+                interestRate: merged.interestRate,
+                totalInstallments: merged.totalInstallments,
+                paidInstallments: merged.paidInstallments,
+                dueDay: merged.dueDay,
+                startDate: merged.startDate,
+                status: merged.status,
+                notes: merged.notes,
+              },
+            }),
+          }),
+        () => setLoans(prevLoans),
+        (savedData) => {
+          if (savedData) {
+            setLoans((prev) =>
+              prev.map((l) => (l.id === id ? normalizeLoan({ ...l, ...savedData, payments: l.payments }) : l))
+            );
+          }
+        }
+      );
+    },
+    [loans, syncWithBackend]
+  );
+
+  const deleteLoan = useCallback(
+    (id: string) => {
+      const prevLoans = loans;
+      setLoans((prev) => prev.filter((l) => l.id !== id));
+
+      syncWithBackend(
+        () => fetch(`/api/finances?entity=loan&id=${id}`, { method: "DELETE" }),
+        () => setLoans(prevLoans)
+      );
+    },
+    [loans, syncWithBackend]
+  );
+
+  const payRegularLoanInstallment = useCallback(
+    (loanId: string, createTransaction = true) => {
       const loan = loans.find((l) => l.id === loanId);
       if (!loan) return;
 
@@ -1401,8 +1551,24 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       const prevExpenses = expenses;
 
       const newPaid = Math.min(loan.totalInstallments, loan.paidInstallments + 1);
-      const newBalance = Math.max(0, loan.currentBalance - loan.currentInstallmentAmount);
+      const remaining = Math.max(0, loan.totalInstallments - newPaid);
+      const newBalance = Math.max(0, remaining * loan.installmentAmount);
       const isPaidOff = newPaid >= loan.totalInstallments || newBalance <= 0;
+
+      const tempPaymentId = "temp-pay-" + Date.now();
+      const paymentRecord: LoanPayment = {
+        id: tempPaymentId,
+        loanId,
+        date: new Date().toISOString(),
+        type: "REGULAR",
+        strategy: "TERM_REDUCTION",
+        installmentsAbated: 1,
+        originalValue: loan.installmentAmount,
+        paidValue: loan.installmentAmount,
+        savedAmount: 0,
+        notes: `Pagamento regular da parcela ${newPaid}/${loan.totalInstallments}`,
+        userId: loan.profileId || currentUser.id,
+      };
 
       setLoans((prev) =>
         prev.map((l) =>
@@ -1412,33 +1578,166 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
                 paidInstallments: newPaid,
                 currentBalance: newBalance,
                 status: isPaidOff ? "PAID_OFF" : "ACTIVE",
+                payments: [paymentRecord, ...(l.payments || [])],
               }
             : l
         )
       );
 
-      setExpenses((prev) =>
-        prev.map((e) =>
-          e.loanId === loanId && e.expenseType === "LOAN" && !e.isPaid
-            ? { ...e, isPaid: true }
-            : e
-        )
-      );
+      if (createTransaction) {
+        addExpense({
+          description: `Parcela ${loan.title} (${newPaid}/${loan.totalInstallments})`,
+          amount: loan.installmentAmount,
+          date: new Date().toISOString(),
+          category: "LOAN_INSTALLMENT",
+          expenseType: "LOAN",
+          paymentMethod: "DEBIT_PIX",
+          isPaid: true,
+          loanId,
+          userId: loan.profileId || currentUser.id,
+        });
+      }
 
       syncWithBackend(
         () =>
           fetch("/api/finances", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ entity: "payInstallment", data: { loanId } }),
+            body: JSON.stringify({
+              entity: "payRegularLoanInstallment",
+              data: { loanId, createTransaction },
+            }),
           }),
         () => {
           setLoans(prevLoans);
           setExpenses(prevExpenses);
+        },
+        (savedData) => {
+          if (savedData?.loan) {
+            setLoans((prev) =>
+              prev.map((l) => (l.id === loanId ? normalizeLoan(savedData.loan) : l))
+            );
+          }
         }
       );
     },
-    [loans, expenses, syncWithBackend]
+    [loans, expenses, currentUser.id, addExpense, syncWithBackend]
+  );
+
+  const amortizeLoanEarly = useCallback(
+    (payload: {
+      loanId: string;
+      installmentsAbated: number;
+      originalValue: number;
+      paidValue: number;
+      strategy: LoanStrategy;
+      newInstallmentAmount?: number;
+      registerTransaction?: boolean;
+      notes?: string;
+    }) => {
+      const loan = loans.find((l) => l.id === payload.loanId);
+      if (!loan) return;
+
+      const prevLoans = loans;
+      const prevExpenses = expenses;
+
+      const savedAmount = Math.max(0, payload.originalValue - payload.paidValue);
+      let updatedPaid = loan.paidInstallments;
+      let updatedInstallment = loan.installmentAmount;
+      let updatedBalance = loan.currentBalance;
+
+      if (payload.strategy === "TERM_REDUCTION") {
+        updatedPaid = Math.min(loan.totalInstallments, loan.paidInstallments + payload.installmentsAbated);
+        const remaining = Math.max(0, loan.totalInstallments - updatedPaid);
+        updatedBalance = Math.max(0, remaining * updatedInstallment);
+      } else {
+        // Redução de parcela
+        const remaining = Math.max(1, loan.totalInstallments - loan.paidInstallments);
+        updatedInstallment = payload.newInstallmentAmount ?? Math.max(1, (loan.currentBalance - payload.paidValue) / remaining);
+        updatedBalance = Math.max(0, loan.currentBalance - payload.paidValue);
+      }
+
+      const isPaidOff = updatedPaid >= loan.totalInstallments || updatedBalance <= 0;
+      const updatedTotalSaved = (loan.totalSaved || 0) + savedAmount;
+
+      const tempPaymentId = "temp-amort-" + Date.now();
+      const paymentRecord: LoanPayment = {
+        id: tempPaymentId,
+        loanId: payload.loanId,
+        date: new Date().toISOString(),
+        type: "EARLY_AMORTIZATION",
+        strategy: payload.strategy,
+        installmentsAbated: payload.installmentsAbated,
+        originalValue: payload.originalValue,
+        paidValue: payload.paidValue,
+        savedAmount,
+        notes: payload.notes || `Antecipação com economia de R$ ${savedAmount.toFixed(2)}`,
+        userId: loan.profileId || currentUser.id,
+      };
+
+      setLoans((prev) =>
+        prev.map((l) =>
+          l.id === payload.loanId
+            ? {
+                ...l,
+                paidInstallments: updatedPaid,
+                installmentAmount: updatedInstallment,
+                currentInstallmentAmount: updatedInstallment,
+                currentBalance: updatedBalance,
+                totalSaved: updatedTotalSaved,
+                status: isPaidOff ? "PAID_OFF" : "ACTIVE",
+                payments: [paymentRecord, ...(l.payments || [])],
+              }
+            : l
+        )
+      );
+
+      if (payload.registerTransaction !== false) {
+        addExpense({
+          description: `Quitação Antecipada ${loan.title} (${payload.installmentsAbated} parc. | Econ. R$ ${savedAmount.toFixed(2)})`,
+          amount: payload.paidValue,
+          date: new Date().toISOString(),
+          category: "LOAN_INSTALLMENT",
+          expenseType: "LOAN",
+          paymentMethod: "DEBIT_PIX",
+          isPaid: true,
+          loanId: payload.loanId,
+          userId: loan.profileId || currentUser.id,
+        });
+      }
+
+      syncWithBackend(
+        () =>
+          fetch("/api/finances", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              entity: "amortizeLoanEarly",
+              data: payload,
+            }),
+          }),
+        () => {
+          setLoans(prevLoans);
+          setExpenses(prevExpenses);
+        },
+        (savedData) => {
+          if (savedData?.loan) {
+            setLoans((prev) =>
+              prev.map((l) => (l.id === payload.loanId ? normalizeLoan(savedData.loan) : l))
+            );
+          }
+        }
+      );
+    },
+    [loans, expenses, currentUser.id, addExpense, syncWithBackend]
+  );
+
+  // Wrapper para compatibilidade com código legado
+  const payMonthlyInstallment = useCallback(
+    (loanId: string) => {
+      payRegularLoanInstallment(loanId, true);
+    },
+    [payRegularLoanInstallment]
   );
 
   // Reserva de Emergência: Aporte
@@ -1852,6 +2151,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       toggleFixedExpensePaid,
       addIncome,
       deleteIncome,
+      addLoan,
+      updateLoan,
+      deleteLoan,
+      payRegularLoanInstallment,
+      amortizeLoanEarly,
       amortizeLoan,
       payMonthlyInstallment,
       addEmergencyDeposit,
@@ -1904,6 +2208,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       toggleFixedExpensePaid,
       addIncome,
       deleteIncome,
+      addLoan,
+      updateLoan,
+      deleteLoan,
+      payRegularLoanInstallment,
+      amortizeLoanEarly,
       amortizeLoan,
       payMonthlyInstallment,
       addEmergencyDeposit,

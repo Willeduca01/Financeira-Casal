@@ -239,7 +239,58 @@ export const UpdateBenefitCardSchema = z.object({
     .nullable(),
 });
 
-// 6. Amortização de Empréstimos (Método Avalanche)
+// 6. Empréstimos do Casal (Gestão Completa)
+export const CreateLoanSchema = z.object({
+  title: sanitizedString(1, 100, "Nome do empréstimo"),
+  institution: sanitizedString(1, 80, "Instituição / Banco"),
+  profileId: validId.optional().nullable(),
+  principalAmount: positiveMonetary("Valor contratado"),
+  installmentAmount: positiveMonetary("Valor da parcela"),
+  interestRate: z.number().positive("Taxa de juros deve ser maior que 0").max(100, "Taxa máxima permitida é 100% a.m."),
+  totalInstallments: z.number().int().min(1, "Mínimo 1 parcela").max(480, "Máximo de 480 parcelas"),
+  paidInstallments: z.number().int().nonnegative().default(0),
+  dueDay: z.number().int().min(1, "Dia mínimo é 1").max(31, "Dia máximo é 31"),
+  startDate: z.string().datetime().optional(),
+  notes: optionalSanitizedString(255),
+  status: LoanStatusEnum.default("ACTIVE"),
+});
+
+export const UpdateLoanSchema = z.object({
+  title: sanitizedString(1, 100).optional(),
+  institution: sanitizedString(1, 80).optional(),
+  profileId: validId.optional().nullable(),
+  principalAmount: positiveMonetary().optional(),
+  installmentAmount: positiveMonetary().optional(),
+  interestRate: z.number().positive().max(100).optional(),
+  totalInstallments: z.number().int().min(1).max(480).optional(),
+  paidInstallments: z.number().int().nonnegative().optional(),
+  dueDay: z.number().int().min(1).max(31).optional(),
+  startDate: z.string().datetime().optional(),
+  notes: optionalSanitizedString(255),
+  status: LoanStatusEnum.optional(),
+});
+
+// 7. Pagamento Regular de Parcela
+export const PayRegularLoanInstallmentSchema = z.object({
+  loanId: validId,
+  createTransaction: z.boolean().default(true).optional(),
+  date: z.string().datetime().optional(),
+});
+
+// 8. Amortização / Antecipação com Desconto
+export const AmortizeLoanEarlySchema = z.object({
+  loanId: validId,
+  installmentsAbated: z.number().int().min(1, "Mínimo de 1 parcela abatida"),
+  originalValue: positiveMonetary("Valor original das parcelas"),
+  paidValue: positiveMonetary("Valor pago com desconto"),
+  strategy: z.enum(["TERM_REDUCTION", "INSTALLMENT_REDUCTION"]),
+  newInstallmentAmount: positiveMonetary("Novo valor da parcela").optional().nullable(),
+  registerTransaction: z.boolean().default(true).optional(),
+  notes: optionalSanitizedString(255),
+  date: z.string().datetime().optional(),
+});
+
+// 9. Amortização Legada (compatibilidade)
 export const CreateLoanAmortizationSchema = z.object({
   loanId: validId,
   amountPaid: positiveMonetary("Valor pago na amortização"),
@@ -251,19 +302,19 @@ export const CreateLoanAmortizationSchema = z.object({
   notes: optionalSanitizedString(255),
 });
 
-// 7. Aporte na Reserva de Emergência
+// 10. Aporte na Reserva de Emergência
 export const CreateEmergencyDepositSchema = z.object({
   fundId: validId,
   amount: positiveMonetary("Valor do aporte"),
   notes: optionalSanitizedString(255),
 });
 
-// 8. Pagamento de Parcela Mensal
+// 11. Pagamento de Parcela Mensal (Legado)
 export const PayLoanInstallmentSchema = z.object({
   loanId: validId,
 });
 
-// 9. Configurações de Usuário e Casal
+// 12. Configurações de Usuário e Casal
 export const UpdateUserSchema = z.object({
   name: sanitizedString(1, 80, "Nome do integrante").optional(),
   email: z.string().email("E-mail inválido").optional(),
@@ -296,6 +347,9 @@ export const FinancePostActionSchema = z.discriminatedUnion("entity", [
   z.object({ entity: z.literal("creditCard"), data: CreateCreditCardSchema }),
   z.object({ entity: z.literal("installment"), data: CreateCreditCardInstallmentSchema }),
   z.object({ entity: z.literal("benefitCard"), data: CreateBenefitCardSchema }),
+  z.object({ entity: z.literal("loan"), data: CreateLoanSchema }),
+  z.object({ entity: z.literal("payRegularLoanInstallment"), data: PayRegularLoanInstallmentSchema }),
+  z.object({ entity: z.literal("amortizeLoanEarly"), data: AmortizeLoanEarlySchema }),
   z.object({ entity: z.literal("amortization"), data: CreateLoanAmortizationSchema }),
   z.object({ entity: z.literal("emergencyDeposit"), data: CreateEmergencyDepositSchema }),
   z.object({ entity: z.literal("payInstallment"), data: PayLoanInstallmentSchema }),
@@ -306,6 +360,7 @@ export const FinancePutActionSchema = z.discriminatedUnion("entity", [
   z.object({ entity: z.literal("income"), id: validId, data: UpdateIncomeSchema }),
   z.object({ entity: z.literal("creditCard"), id: validId, data: UpdateCreditCardSchema }),
   z.object({ entity: z.literal("benefitCard"), id: validId, data: UpdateBenefitCardSchema }),
+  z.object({ entity: z.literal("loan"), id: validId, data: UpdateLoanSchema }),
   z.object({ entity: z.literal("user"), id: validId.optional(), data: UpdateUserSchema }),
   z.object({ entity: z.literal("coupleSettings"), id: z.string().default("default"), data: UpdateCoupleSettingsSchema }),
 ]);
@@ -317,6 +372,7 @@ export const FinanceDeleteQuerySchema = z.object({
     "creditCard",
     "installment",
     "benefitCard",
+    "loan",
   ]),
   id: validId,
 });

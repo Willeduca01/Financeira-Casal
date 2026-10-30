@@ -190,8 +190,11 @@ export async function GET(request: NextRequest) {
         },
       }),
       prisma.loan.findMany({
-        include: { amortizations: true },
-        orderBy: { monthlyInterestRate: "desc" },
+        include: {
+          amortizations: true,
+          payments: { orderBy: { date: "desc" } },
+        },
+        orderBy: { interestRate: "desc" },
       }),
       prisma.income.findMany({
         orderBy: { receivedAt: "desc" },
@@ -228,6 +231,44 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Normalização defensiva de empréstimos
+    const normalizedLoans = loans.map((l: any) => {
+      const title = l.title || l.name || "Empréstimo";
+      const institution = l.institution || l.bank || "Banco";
+      const principalAmount = Number(l.principalAmount || l.originalAmount || 0);
+      const installmentAmount = Number(l.installmentAmount || l.currentInstallmentAmount || 0);
+      const interestRate = Number(l.interestRate || l.monthlyInterestRate || 0);
+      const totalInstallments = Number(l.totalInstallments || 0);
+      const paidInstallments = Number(l.paidInstallments || 0);
+      const remainingInstallments = Math.max(0, totalInstallments - paidInstallments);
+      const currentBalance = Number(l.currentBalance || (installmentAmount * remainingInstallments));
+      const totalSaved = Number(l.totalSaved || 0);
+
+      return {
+        ...l,
+        title,
+        name: title,
+        institution,
+        bank: institution,
+        principalAmount,
+        originalAmount: principalAmount,
+        installmentAmount,
+        currentInstallmentAmount: installmentAmount,
+        interestRate,
+        monthlyInterestRate: interestRate,
+        totalInstallments,
+        paidInstallments,
+        dueDay: Number(l.dueDay || 10),
+        startDate: l.startDate instanceof Date ? l.startDate.toISOString() : (l.startDate || l.createdAt),
+        status: l.status,
+        totalSaved,
+        currentBalance,
+        profileId: l.profileId || null,
+        notes: l.notes || null,
+        payments: l.payments || [],
+      };
+    });
+
     const durationMs = (performance.now() - startTime).toFixed(1);
 
     return NextResponse.json(
@@ -237,7 +278,7 @@ export async function GET(request: NextRequest) {
         authenticatedUserId: authUser.id,
         users: users.map(toPublicUser),
         currentUser: toPublicUser(currentUser),
-        loans,
+        loans: normalizedLoans,
         incomes,
         expenses,
         creditCards,
@@ -407,6 +448,171 @@ export async function POST(request: NextRequest) {
           },
         });
         return NextResponse.json({ success: true, data: newBenefitCard }, { status: 201 });
+      }
+
+      case "loan": {
+        const remainingCount = Math.max(0, action.data.totalInstallments - action.data.paidInstallments);
+        const currentBalance = action.data.installmentAmount * remainingCount;
+        const newLoan = await prisma.loan.create({
+          data: {
+            title: action.data.title,
+            institution: action.data.institution,
+            profileId: action.data.profileId || sessionUserId,
+            principalAmount: action.data.principalAmount,
+            installmentAmount: action.data.installmentAmount,
+            interestRate: action.data.interestRate,
+            totalInstallments: action.data.totalInstallments,
+            paidInstallments: action.data.paidInstallments,
+            dueDay: action.data.dueDay,
+            startDate: action.data.startDate ? new Date(action.data.startDate) : new Date(),
+            status: action.data.status,
+            totalSaved: 0,
+            currentBalance,
+            notes: action.data.notes,
+            // Compatibilidade
+            name: action.data.title,
+            bank: action.data.institution,
+            originalAmount: action.data.principalAmount,
+            monthlyInterestRate: action.data.interestRate,
+            currentInstallmentAmount: action.data.installmentAmount,
+          },
+        });
+        return NextResponse.json({ success: true, data: newLoan }, { status: 201 });
+      }
+
+      case "payRegularLoanInstallment": {
+        const loan = await prisma.loan.findUnique({
+          where: { id: action.data.loanId },
+        });
+        if (!loan) {
+          return NextResponse.json(
+            { error: "Empréstimo não encontrado", statusCode: 404 },
+            { status: 404 }
+          );
+        }
+
+        const newPaid = Math.min(loan.totalInstallments, loan.paidInstallments + 1);
+        const instAmount = Number(loan.installmentAmount || loan.currentInstallmentAmount);
+        const newBalance = Math.max(0, Number(loan.currentBalance) - instAmount);
+        const isPaidOff = newPaid >= loan.totalInstallments || newBalance <= 0;
+
+        const [updatedLoan, payment] = await prisma.$transaction([
+          prisma.loan.update({
+            where: { id: action.data.loanId },
+            data: {
+              paidInstallments: newPaid,
+              currentBalance: newBalance,
+              status: isPaidOff ? "PAID_OFF" : "ACTIVE",
+            },
+          }),
+          prisma.loanPayment.create({
+            data: {
+              loanId: action.data.loanId,
+              date: action.data.date ? new Date(action.data.date) : new Date(),
+              type: "REGULAR",
+              installmentsAbated: 1,
+              originalValue: instAmount,
+              paidValue: instAmount,
+              savedAmount: 0,
+              notes: `Pagamento regular da parcela ${newPaid}/${loan.totalInstallments}`,
+              userId: sessionUserId,
+            },
+          }),
+        ]);
+
+        if (action.data.createTransaction !== false) {
+          await prisma.expense.create({
+            data: {
+              description: `Parcela ${loan.title || loan.name} (${newPaid}/${loan.totalInstallments})`,
+              amount: instAmount,
+              date: action.data.date ? new Date(action.data.date) : new Date(),
+              category: "LOAN_INSTALLMENT",
+              expenseType: "LOAN",
+              paymentMethod: "DEBIT_PIX",
+              isPaid: true,
+              loanId: loan.id,
+              userId: sessionUserId,
+            },
+          });
+        }
+
+        return NextResponse.json({ success: true, data: updatedLoan, payment });
+      }
+
+      case "amortizeLoanEarly": {
+        const loan = await prisma.loan.findUnique({
+          where: { id: action.data.loanId },
+        });
+        if (!loan) {
+          return NextResponse.json(
+            { error: "Empréstimo não encontrado", statusCode: 404 },
+            { status: 404 }
+          );
+        }
+
+        const savedAmount = Math.max(0, action.data.originalValue - action.data.paidValue);
+        const newTotalSaved = Number(loan.totalSaved || 0) + savedAmount;
+        let newPaidInstallments = loan.paidInstallments;
+        let newInstallmentAmount = Number(loan.installmentAmount || loan.currentInstallmentAmount);
+
+        if (action.data.strategy === "TERM_REDUCTION") {
+          newPaidInstallments = Math.min(
+            loan.totalInstallments,
+            loan.paidInstallments + action.data.installmentsAbated
+          );
+        } else if (action.data.strategy === "INSTALLMENT_REDUCTION" && action.data.newInstallmentAmount) {
+          newInstallmentAmount = action.data.newInstallmentAmount;
+        }
+
+        const remainingCount = Math.max(0, loan.totalInstallments - newPaidInstallments);
+        const newBalance = Math.max(0, remainingCount * newInstallmentAmount);
+        const isPaidOff = newPaidInstallments >= loan.totalInstallments || newBalance <= 0;
+
+        const [updatedLoan, payment] = await prisma.$transaction([
+          prisma.loan.update({
+            where: { id: action.data.loanId },
+            data: {
+              paidInstallments: newPaidInstallments,
+              installmentAmount: newInstallmentAmount,
+              currentInstallmentAmount: newInstallmentAmount,
+              totalSaved: newTotalSaved,
+              currentBalance: newBalance,
+              status: isPaidOff ? "PAID_OFF" : "ACTIVE",
+            },
+          }),
+          prisma.loanPayment.create({
+            data: {
+              loanId: action.data.loanId,
+              date: action.data.date ? new Date(action.data.date) : new Date(),
+              type: "EARLY_AMORTIZATION",
+              strategy: action.data.strategy,
+              installmentsAbated: action.data.installmentsAbated,
+              originalValue: action.data.originalValue,
+              paidValue: action.data.paidValue,
+              savedAmount,
+              notes: action.data.notes || "Quitação antecipada com desconto",
+              userId: sessionUserId,
+            },
+          }),
+        ]);
+
+        if (action.data.registerTransaction !== false) {
+          await prisma.expense.create({
+            data: {
+              description: `Amortização ${loan.title || loan.name} (-${action.data.installmentsAbated}x, desc: R$ ${savedAmount.toFixed(2)})`,
+              amount: action.data.paidValue,
+              date: action.data.date ? new Date(action.data.date) : new Date(),
+              category: "LOAN_INSTALLMENT",
+              expenseType: "LOAN",
+              paymentMethod: "DEBIT_PIX",
+              isPaid: true,
+              loanId: loan.id,
+              userId: sessionUserId,
+            },
+          });
+        }
+
+        return NextResponse.json({ success: true, data: updatedLoan, payment }, { status: 201 });
       }
 
       case "amortization": {
@@ -631,6 +837,58 @@ export async function PUT(request: NextRequest) {
         const updated = await prisma.benefitCard.update({
           where: { id: action.id },
           data: action.data,
+        });
+        return NextResponse.json({ success: true, data: updated });
+      }
+
+      case "loan": {
+        const existing = await prisma.loan.findUnique({
+          where: { id: action.id },
+        });
+        if (!existing) {
+          return NextResponse.json(
+            { error: "Empréstimo não encontrado", statusCode: 404 },
+            { status: 404 }
+          );
+        }
+
+        const updateData: any = {};
+        if (action.data.title !== undefined) {
+          updateData.title = action.data.title;
+          updateData.name = action.data.title;
+        }
+        if (action.data.institution !== undefined) {
+          updateData.institution = action.data.institution;
+          updateData.bank = action.data.institution;
+        }
+        if (action.data.profileId !== undefined) updateData.profileId = action.data.profileId;
+        if (action.data.principalAmount !== undefined) {
+          updateData.principalAmount = action.data.principalAmount;
+          updateData.originalAmount = action.data.principalAmount;
+        }
+        if (action.data.installmentAmount !== undefined) {
+          updateData.installmentAmount = action.data.installmentAmount;
+          updateData.currentInstallmentAmount = action.data.installmentAmount;
+        }
+        if (action.data.interestRate !== undefined) {
+          updateData.interestRate = action.data.interestRate;
+          updateData.monthlyInterestRate = action.data.interestRate;
+        }
+        if (action.data.totalInstallments !== undefined) updateData.totalInstallments = action.data.totalInstallments;
+        if (action.data.paidInstallments !== undefined) updateData.paidInstallments = action.data.paidInstallments;
+        if (action.data.dueDay !== undefined) updateData.dueDay = action.data.dueDay;
+        if (action.data.startDate !== undefined) updateData.startDate = new Date(action.data.startDate);
+        if (action.data.notes !== undefined) updateData.notes = action.data.notes;
+        if (action.data.status !== undefined) updateData.status = action.data.status;
+
+        const total = action.data.totalInstallments !== undefined ? action.data.totalInstallments : existing.totalInstallments;
+        const paid = action.data.paidInstallments !== undefined ? action.data.paidInstallments : existing.paidInstallments;
+        const inst = action.data.installmentAmount !== undefined ? action.data.installmentAmount : Number(existing.installmentAmount || existing.currentInstallmentAmount);
+        updateData.currentBalance = Math.max(0, (total - paid) * inst);
+
+        const updated = await prisma.loan.update({
+          where: { id: action.id },
+          data: updateData,
         });
         return NextResponse.json({ success: true, data: updated });
       }
@@ -903,6 +1161,21 @@ export async function DELETE(request: NextRequest) {
 
         await prisma.benefitCard.delete({ where: { id: query.id } });
         return NextResponse.json({ success: true, message: "Cartão benefício excluído com sucesso." });
+      }
+
+      case "loan": {
+        const existing = await prisma.loan.findUnique({
+          where: { id: query.id },
+        });
+        if (!existing) {
+          return NextResponse.json(
+            { error: "Empréstimo não encontrado", statusCode: 404 },
+            { status: 404 }
+          );
+        }
+
+        await prisma.loan.delete({ where: { id: query.id } });
+        return NextResponse.json({ success: true, message: "Empréstimo excluído com sucesso." });
       }
     }
   } catch (error) {

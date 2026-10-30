@@ -58,11 +58,11 @@ export const AvalancheAlertCard: React.FC<AvalancheAlertCardProps> = ({
                 </span>
                 <span className="text-[11px] font-semibold text-[#FBF9F5]/90 flex items-center gap-1">
                   <Flame size={12} className="text-[#D99B52]" />
-                  Maior taxa: {formatPercent(targetLoan.monthlyInterestRate)} a.m.
+                  Maior taxa: {formatPercent(targetLoan.interestRate ?? targetLoan.monthlyInterestRate ?? 0)} a.m.
                 </span>
               </div>
               <h2 className="font-serif text-lg sm:text-xl font-black text-[#FBF9F5] mt-0.5">
-                Alvo: {targetLoan.name}
+                Alvo: {targetLoan.title || targetLoan.name}
               </h2>
             </div>
           </div>
@@ -73,7 +73,7 @@ export const AvalancheAlertCard: React.FC<AvalancheAlertCardProps> = ({
               Saldo Devedor: <strong className="text-[#FBF9F5] text-sm font-extrabold">{formatBRL(targetLoan.currentBalance)}</strong>
             </span>
             <span>&bull;</span>
-            <span>{remainingInstallments} parcelas de {formatBRL(targetLoan.currentInstallmentAmount)}</span>
+            <span>{remainingInstallments} parcelas de {formatBRL(targetLoan.installmentAmount ?? targetLoan.currentInstallmentAmount ?? 0)}</span>
           </div>
 
           {/* Dica da Sobra do Mês */}
@@ -96,7 +96,7 @@ export const AvalancheAlertCard: React.FC<AvalancheAlertCardProps> = ({
             onClick={() => onOpenAmortize(targetLoan.id)}
             className="w-full md:w-auto rounded-full bg-[#FBF9F5] hover:bg-[#F4EFE6] text-[#2C221E] font-bold py-3.5 px-6 shadow-md transition-all flex items-center justify-center gap-2.5 hover:scale-[1.02] active:scale-95 text-xs sm:text-sm group"
           >
-            <span>Pagar / Amortizar {targetLoan.bank || targetLoan.name}</span>
+            <span>Pagar / Amortizar {targetLoan.institution || targetLoan.bank || targetLoan.title || targetLoan.name}</span>
             <ArrowRight size={16} className="text-[#C46D53] transition-transform group-hover:translate-x-1" />
           </button>
         </div>

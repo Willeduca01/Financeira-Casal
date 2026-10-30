@@ -70,48 +70,72 @@ async function main() {
   // 3. Cadastrar Empréstimos (Método Avalanche)
   const loanNubank = await prisma.loan.create({
     data: {
+      title: "Empréstimo Pessoal Nubank",
+      institution: "Nubank",
+      profileId: lucas.id,
+      principalAmount: 12000.0,
+      installmentAmount: 785.4,
+      interestRate: 4.85, // Maior taxa -> Alvo #1 Avalanche
+      totalInstallments: 24,
+      paidInstallments: 9,
+      dueDay: 10,
+      status: "ACTIVE",
+      totalSaved: 450.0,
+      currentBalance: 8420.0,
+      notes: "Contrato firmado em 2025 para reforma da cozinha",
+      // Legado
       name: "Empréstimo Pessoal Nubank",
       bank: "Nubank",
       originalAmount: 12000.0,
-      currentBalance: 8420.0,
-      monthlyInterestRate: 4.85, // Maior taxa -> Alvo #1 Avalanche
-      totalInstallments: 24,
-      paidInstallments: 9,
+      monthlyInterestRate: 4.85,
       currentInstallmentAmount: 785.4,
-      dueDay: 10,
-      status: "ACTIVE",
-      notes: "Contrato firmado em 2025 para reforma da cozinha",
     },
   });
 
   const loanCaixa = await prisma.loan.create({
     data: {
+      title: "Empréstimo Caixa Consignado",
+      institution: "Caixa Econômica Federal",
+      profileId: mariana.id,
+      principalAmount: 25000.0,
+      installmentAmount: 740.0,
+      interestRate: 2.1,
+      totalInstallments: 48,
+      paidInstallments: 16,
+      dueDay: 5,
+      status: "ACTIVE",
+      totalSaved: 0,
+      currentBalance: 18600.0,
+      notes: "Débito em conta corrente",
+      // Legado
       name: "Empréstimo Caixa Consignado",
       bank: "Caixa Econômica Federal",
       originalAmount: 25000.0,
-      currentBalance: 18600.0,
       monthlyInterestRate: 2.1,
-      totalInstallments: 48,
-      paidInstallments: 16,
       currentInstallmentAmount: 740.0,
-      dueDay: 5,
-      status: "ACTIVE",
-      notes: "Débito em conta corrente",
     },
   });
 
   const loanSantander = await prisma.loan.create({
     data: {
+      title: "Crédito Pessoal Santander",
+      institution: "Santander",
+      profileId: lucas.id,
+      principalAmount: 6000.0,
+      installmentAmount: 410.0,
+      interestRate: 1.89,
+      totalInstallments: 18,
+      paidInstallments: 10,
+      dueDay: 20,
+      status: "ACTIVE",
+      totalSaved: 0,
+      currentBalance: 3200.0,
+      // Legado
       name: "Crédito Pessoal Santander",
       bank: "Santander",
       originalAmount: 6000.0,
-      currentBalance: 3200.0,
       monthlyInterestRate: 1.89,
-      totalInstallments: 18,
-      paidInstallments: 10,
       currentInstallmentAmount: 410.0,
-      dueDay: 20,
-      status: "ACTIVE",
     },
   });
 
@@ -385,6 +409,21 @@ async function main() {
       date: new Date(now.getFullYear(), now.getMonth() - 1, 25),
       userId: lucas.id,
       notes: "Amortização extraordinária usando sobra do orçamento!",
+    },
+  });
+
+  await prisma.loanPayment.create({
+    data: {
+      loanId: loanNubank.id,
+      date: new Date(now.getFullYear(), now.getMonth() - 1, 25),
+      type: "EARLY_AMORTIZATION",
+      strategy: "TERM_REDUCTION",
+      installmentsAbated: 3,
+      originalValue: 1950.0,
+      paidValue: 1500.0,
+      savedAmount: 450.0,
+      notes: "Amortização extraordinária usando sobra do orçamento!",
+      userId: lucas.id,
     },
   });
 

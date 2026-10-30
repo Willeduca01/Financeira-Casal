@@ -95,6 +95,8 @@ model User {
   creditCards      CreditCard[]
   benefitCards     BenefitCard[]
   installments     CreditCardInstallment[]
+  loans            Loan[]
+  loanPayments     LoanPayment[]
   
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
@@ -159,28 +161,73 @@ model Expense {
   @@index([loanId])
 }
 
+enum LoanPaymentType {
+  REGULAR
+  EARLY_AMORTIZATION
+}
+
+enum LoanStrategy {
+  TERM_REDUCTION
+  INSTALLMENT_REDUCTION
+}
+
 model Loan {
   id                      String             @id @default(cuid())
-  name                    String             // ex: "Empréstimo Caixa Consignado"
-  bank                    String             // ex: "Caixa Econômica"
-  originalAmount          Decimal            @db.Decimal(12, 2)
-  currentBalance          Decimal            @db.Decimal(12, 2)
-  monthlyInterestRate     Decimal            @db.Decimal(6, 3) // Taxa mensal (%) ex: 3.450%
-  totalInstallments       Int
-  paidInstallments        Int
-  currentInstallmentAmount Decimal           @db.Decimal(12, 2)
-  dueDay                  Int                // Dia do mês (1 a 31)
+  title                   String             @default("") // Nome do empréstimo (ex: "Empréstimo Pessoal Nubank")
+  institution             String             @default("") // Banco/Financeira (ex: "Nubank")
+  profileId               String?            // Responsável do casal ou compartilhado
+  profile                 User?              @relation(fields: [profileId], references: [id], onDelete: SetNull)
+  principalAmount         Decimal            @default(0) @db.Decimal(12, 2) // Valor original contratado
+  installmentAmount       Decimal            @default(0) @db.Decimal(12, 2) // Valor atual da parcela
+  interestRate            Decimal            @default(0) @db.Decimal(6, 3) // Taxa de juros mensal % a.m.
+  totalInstallments       Int                // Total de parcelas do contrato
+  paidInstallments        Int                // Parcelas já quitadas
+  dueDay                  Int                // Dia do vencimento (1 a 31)
+  startDate               DateTime           @default(now())
   status                  LoanStatus         @default(ACTIVE)
+  totalSaved              Decimal            @default(0) @db.Decimal(12, 2) // Economia acumulada via antecipações
+  currentBalance          Decimal            @default(0) @db.Decimal(12, 2) // Saldo devedor atual
   notes                   String?
+
+  // Compatibilidade legada
+  name                    String?
+  bank                    String?
+  originalAmount          Decimal?           @db.Decimal(12, 2)
+  monthlyInterestRate     Decimal?           @db.Decimal(6, 3)
+  currentInstallmentAmount Decimal?          @db.Decimal(12, 2)
   
+  payments                LoanPayment[]
   amortizations           LoanAmortization[]
   expenses                Expense[]
   
   createdAt               DateTime           @default(now())
   updatedAt               DateTime           @updatedAt
   
+  @@index([interestRate(sort: Desc)])
   @@index([monthlyInterestRate(sort: Desc)])
   @@index([status])
+  @@index([profileId])
+}
+
+model LoanPayment {
+  id                 String                @id @default(cuid())
+  loanId             String
+  loan               Loan                  @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  date               DateTime              @default(now())
+  type               LoanPaymentType       @default(REGULAR) // REGULAR | EARLY_AMORTIZATION
+  strategy           LoanStrategy?         // TERM_REDUCTION | INSTALLMENT_REDUCTION
+  installmentsAbated Int                   @default(0)       // Quantidade de parcelas abatidas
+  originalValue      Decimal               @db.Decimal(12, 2) // Valor cheio que seria pago sem desconto
+  paidValue          Decimal               @db.Decimal(12, 2) // Valor efetivamente pago com desconto no banco
+  savedAmount        Decimal               @default(0) @db.Decimal(12, 2) // originalValue - paidValue
+  notes              String?
+  userId             String?
+  user               User?                 @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  createdAt          DateTime              @default(now())
+
+  @@index([loanId])
+  @@index([date(sort: Desc)])
 }
 
 model LoanAmortization {

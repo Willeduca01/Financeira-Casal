@@ -42,6 +42,10 @@ export type LoanStatus = "ACTIVE" | "PAID_OFF";
 
 export type AbatementType = "REDUCE_TERM" | "REDUCE_INSTALLMENT";
 
+export type LoanPaymentType = "REGULAR" | "EARLY_AMORTIZATION";
+
+export type LoanStrategy = "TERM_REDUCTION" | "INSTALLMENT_REDUCTION";
+
 export interface User {
   id: string;
   name: string;
@@ -123,19 +127,44 @@ export interface BenefitCard {
   userId: string;
 }
 
+export interface LoanPayment {
+  id: string;
+  loanId: string;
+  date: string; // ISO date string
+  type: LoanPaymentType;
+  strategy?: LoanStrategy | null;
+  installmentsAbated: number;
+  originalValue: number;
+  paidValue: number;
+  savedAmount: number;
+  notes?: string;
+  userId?: string;
+}
+
 export interface Loan {
   id: string;
-  name: string;
-  bank: string;
-  originalAmount: number;
-  currentBalance: number;
-  monthlyInterestRate: number; // % ao mês (ex: 4.85)
+  title: string;
+  institution: string;
+  profileId?: string | null;
+  principalAmount: number;
+  installmentAmount: number;
+  interestRate: number; // % ao mês (ex: 4.85)
   totalInstallments: number;
   paidInstallments: number;
-  currentInstallmentAmount: number;
   dueDay: number;
+  startDate: string; // ISO date string
   status: LoanStatus;
+  totalSaved: number;
+  currentBalance: number;
   notes?: string;
+  payments?: LoanPayment[];
+
+  // Compatibilidade legada
+  name?: string;
+  bank?: string;
+  originalAmount?: number;
+  monthlyInterestRate?: number;
+  currentInstallmentAmount?: number;
 }
 
 export interface LoanAmortization {

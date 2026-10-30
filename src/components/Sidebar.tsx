@@ -97,7 +97,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: "loans",
-      label: "Método Avalanche",
+      label: "Empréstimos do Casal",
       icon: <Mountain size={20} className="shrink-0" />,
       badge: "Alvo nº 1",
     },
