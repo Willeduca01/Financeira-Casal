@@ -177,6 +177,22 @@ function startWebServer() {
     console.log(`🌐 [WEB_SERVER] Servidor web ativo na porta ${PORT}`);
     console.log(`📱 [WEB_QR] Acesse a rota /qr para escanear pelo navegador.`);
   });
+
+  // Auto-ping para manter o container do Render acordado 24/7 no plano gratuito
+  const externalUrl = process.env.RENDER_EXTERNAL_URL || process.env.PUBLIC_URL;
+  if (externalUrl) {
+    const pingUrl = externalUrl.endsWith("/") ? `${externalUrl}health` : `${externalUrl}/health`;
+    console.log(`💓 [KEEP_ALIVE] Auto-ping ativado para evitar hibernação no Render: ${pingUrl}`);
+    setInterval(async () => {
+      try {
+        await fetch(pingUrl);
+      } catch (e) {
+        // Ignora falhas pontuais de ping
+      }
+    }, 8 * 60 * 1000); // A cada 8 minutos
+  } else {
+    console.log("ℹ️ [KEEP_ALIVE] Dica: Cadastre a URL do Render no UptimeRobot ou Cron-job.org (/health) para o bot nunca hibernar.");
+  }
 }
 
 async function startBaileysBot() {
