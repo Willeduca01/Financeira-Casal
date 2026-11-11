@@ -183,7 +183,30 @@ async function startBaileysBot() {
   console.log("========================================================\n");
 
   // 1. Restaura a sessão prévia salva no Neon Postgres se estiver na nuvem
-  await restoreSessionFromNeon(AUTH_FOLDER);
+  const hasRestored = await restoreSessionFromNeon(AUTH_FOLDER);
+  if (hasRestored) {
+    isConnected = true;
+    try {
+      await prisma.whatsAppSession.upsert({
+        where: { id: "qr_status" },
+        update: {
+          data: JSON.stringify({
+            qr: null,
+            connected: true,
+            updatedAt: new Date().toISOString(),
+          }),
+        },
+        create: {
+          id: "qr_status",
+          data: JSON.stringify({
+            qr: null,
+            connected: true,
+            updatedAt: new Date().toISOString(),
+          }),
+        },
+      });
+    } catch {}
+  }
 
   const { state, saveCreds } = await useMultiFileAuthState(AUTH_FOLDER);
   const { version, isLatest } = await fetchLatestBaileysVersion();

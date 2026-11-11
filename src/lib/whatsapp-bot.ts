@@ -245,7 +245,6 @@ DIRETRIZES DE EXTRAÇÃO:
 
   // Modelos em ordem de prioridade com fallback automático caso o tier da chave não suporte um deles
   const candidateModels = [
-    "gemini-2.5-flash",
     "gemini-3.5-flash-lite",
     "gemini-3.8-flash",
     "gemini-flash-latest",

@@ -201,3 +201,4 @@ export const WhatsAppQRCard: React.FC = () => {
     </div>
   );
 };
+
