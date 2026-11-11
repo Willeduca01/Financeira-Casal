@@ -104,9 +104,15 @@ export interface CardContextItem {
   lastFourDigits?: string | null;
 }
 
+export interface ChatMessage {
+  role: "user" | "assistant";
+  text: string;
+}
+
 export interface BotContext {
   creditCards: CardContextItem[];
   benefitCards: CardContextItem[];
+  recentHistory?: ChatMessage[];
 }
 
 /**
@@ -223,6 +229,13 @@ ${
         .join("\n")
     : "  (Nenhum cartão de benefícios cadastrado)"
 }
+${
+  context.recentHistory && context.recentHistory.length > 0
+    ? `\nHISTÓRICO RECENTE DA CONVERSA (Contexto das mensagens anteriores imediatas):\n${context.recentHistory
+        .map((h) => `* [${h.role === "user" ? "USUÁRIO" : "BOT"}]: "${h.text}"`)
+        .join("\n")}\n`
+    : ""
+}
 
 CATEGORIAS ORÇAMENTÁRIAS PERMITIDAS:
 - HOUSING: Moradia, Aluguel, Condomínio
@@ -264,6 +277,13 @@ DIRETRIZES DE EXTRAÇÃO:
    - Se a pergunta for ampla ou geral (ex: "quais os saldos dos meus cartões?", "meus saldos", "quanto temos nos cartões?"):
      * Defina 'matchedCardId' como null.
      * Na 'replyMessage', gere uma lista clara, organizada e bonita com todos os cartões cadastrados e seus respectivos saldos de benefícios e limites de crédito disponíveis.
+
+6. CONTINUIDADE E CONTEXTO DE CONVERSA (MEMÓRIA MULTI-TURN - EXTREMAMENTE IMPORTANTE):
+   - Os usuários no WhatsApp costumam enviar mensagens curtas e sequenciais (exemplo: primeiro 'sorvete no cartão do william' e, quando o bot pergunta o preço, responde apenas 'deu 13' ou '13').
+   - ANALISE SEMPRE O HISTÓRICO RECENTE: Se o bot acabou de perguntar o valor, a forma de pagamento ou a descrição e o usuário respondeu àquela pergunta na mensagem atual:
+     * NUNCA pergunte novamente o que já foi respondido!
+     * COMBINE as informações anteriores (ex: descrição 'sorvete', cartão 'cartão do william') com o dado recém-informado (ex: '13').
+     * Gere o lançamento completo com intent 'register_expense', valor 13, categoria 'SWEETS_SNACKS', cartão correspondente e confirme o registro com sucesso na replyMessage!
 `;
 
   // Modelos em ordem de prioridade com fallback automático caso o tier da chave não suporte um deles

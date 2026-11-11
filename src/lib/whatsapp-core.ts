@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import {
   interpretFinancialMessage,
   WhatsAppFinancialExtraction,
+  ChatMessage,
 } from "@/lib/whatsapp-bot";
 
 /**
@@ -70,7 +71,8 @@ export interface ProcessFinancialMessageResult {
  */
 export async function processFinancialMessage(
   cleanSender: string,
-  userText: string
+  userText: string,
+  recentHistory?: ChatMessage[]
 ): Promise<ProcessFinancialMessageResult> {
   const allowedEnv = process.env.WHATSAPP_ALLOWED_NUMBERS;
 
@@ -144,6 +146,7 @@ export async function processFinancialMessage(
       currentBalance: Number(b.currentBalance),
       ownerName: b.userId ? userMap.get(b.userId) : undefined,
     })),
+    recentHistory,
   });
 
   // 3. Consulta de Saldos e Limites ('check_balance')
