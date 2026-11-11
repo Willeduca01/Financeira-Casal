@@ -20,9 +20,15 @@ function getGoogleProvider() {
  */
 export const WhatsAppFinancialExtractionSchema = z.object({
   intent: z
-    .enum(["register_expense", "register_income", "missing_info", "unknown"])
+    .enum([
+      "register_expense",
+      "register_income",
+      "check_balance",
+      "missing_info",
+      "unknown",
+    ])
     .describe(
-      "Intenção principal da mensagem: 'register_expense' para gastos/compras/pagamentos, 'register_income' para recebimentos/salários/pix recebido, 'missing_info' se o usuário quis registrar algo mas faltou o valor monetário ou detalhe crítico, 'unknown' para saudações ou mensagens não financeiras."
+      "Intenção principal da mensagem: 'register_expense' para gastos/compras/pagamentos, 'register_income' para recebimentos/salários/pix recebido, 'check_balance' para consultar saldo, limite ou valores disponíveis em cartões de crédito ou benefícios (VR/VA) ou saldos gerais (ex: 'qual o valor do pluxee VA?', 'quanto tenho no caju?', 'limite nubank', 'quais os saldos dos meus cartões?'), 'missing_info' se o usuário quis registrar algo mas faltou o valor monetário ou detalhe crítico, 'unknown' para saudações ou mensagens não financeiras."
     ),
   missingFields: z
     .array(z.string())
@@ -91,6 +97,10 @@ export interface CardContextItem {
   name: string;
   bank?: string;
   type?: string;
+  totalLimit?: number;
+  availableLimit?: number;
+  currentBalance?: number;
+  ownerName?: string;
   lastFourDigits?: string | null;
 }
 
@@ -196,7 +206,7 @@ ${
     ? context.creditCards
         .map(
           (c) =>
-            `  * ID: "${c.id}" | Nome: "${c.name}" ${c.bank ? `| Banco: ${c.bank}` : ""}`
+            `  * ID: "${c.id}" | Nome: "${c.name}" ${c.bank ? `| Banco: ${c.bank}` : ""} | Limite Disponível: R$ ${(c.availableLimit ?? 0).toFixed(2)} | Limite Total: R$ ${(c.totalLimit ?? 0).toFixed(2)}${c.ownerName ? ` | Titular: ${c.ownerName}` : ""}`
         )
         .join("\n")
     : "  (Nenhum cartão de crédito cadastrado)"
@@ -208,7 +218,7 @@ ${
     ? context.benefitCards
         .map(
           (b) =>
-            `  * ID: "${b.id}" | Nome: "${b.name}" ${b.type ? `| Tipo: ${b.type}` : ""}`
+            `  * ID: "${b.id}" | Nome: "${b.name}" ${b.type ? `| Tipo: ${b.type}` : ""} | Saldo Atual Disponível: R$ ${(b.currentBalance ?? 0).toFixed(2)}${b.ownerName ? ` | Titular: ${b.ownerName}` : ""}`
         )
         .join("\n")
     : "  (Nenhum cartão de benefícios cadastrado)"
@@ -240,7 +250,20 @@ DIRETRIZES DE EXTRAÇÃO:
    - Curta, calorosa e assertiva em português (com emojis).
    - Se 'register_expense': confirme que registrou, detalhando descrição, valor em R$ (e parcelas se > 1) e forma de pagamento.
    - Se 'missing_info': pergunte amigavelmente o dado que faltou (ex: "Qual foi o valor gasto nessa compra? 💰").
-   - Se 'unknown': responda educadamente dizendo como eles podem registrar (ex: "Olá! Para registrar um gasto, me diga por exemplo: '35 reais no almoço com cartão VR' ou 'Mercado 120 reais no Nubank' 💳").
+   - Se 'unknown': responda educadamente dizendo como eles podem registrar ou consultar (ex: "Olá! Para registrar um gasto, diga por exemplo: '35 reais no almoço com cartão VR' ou 'Mercado 120 reais no Nubank'. Para consultar saldos, basta perguntar: 'Qual o saldo do Pluxee VA?' ou 'Quanto tenho no cartão Caju?' 💳").
+
+5. CONSULTA DE SALDO E LIMITES ('check_balance'):
+   - Se o usuário perguntar o saldo ou valor disponível de um benefício (ex: "qual o valor que tem no cartão pluxee VA", "quanto tenho no caju?", "saldo VR", "quanto sobrou no vale refeição"):
+     * Identifique o cartão correspondente nas listas acima e defina 'matchedCardId'.
+     * Configure 'paymentTarget' como 'benefit_card'.
+     * Na 'replyMessage', responda com o saldo atual exato em R$ do cartão mencionado de forma amigável e com emojis (ex: "O saldo atual do seu cartão Pluxee (VA) é de R$ 270,00 🍽️" ou "Você tem R$ 726,00 disponíveis no cartão Caju (VR) 🥗").
+   - Se o usuário perguntar o limite de um cartão de crédito (ex: "quanto tenho de limite no Nubank?", "qual limite disponível no cartão Inter?"):
+     * Identifique o cartão correspondente nas listas acima e defina 'matchedCardId'.
+     * Configure 'paymentTarget' como 'credit_card'.
+     * Na 'replyMessage', responda com o limite disponível e o limite total em R$ (ex: "Seu cartão Nubank está com R$ 1.450,00 de limite disponível (de um limite total de R$ 3.000,00) 💳").
+   - Se a pergunta for ampla ou geral (ex: "quais os saldos dos meus cartões?", "meus saldos", "quanto temos nos cartões?"):
+     * Defina 'matchedCardId' como null.
+     * Na 'replyMessage', gere uma lista clara, organizada e bonita com todos os cartões cadastrados e seus respectivos saldos de benefícios e limites de crédito disponíveis.
 `;
 
   // Modelos em ordem de prioridade com fallback automático caso o tier da chave não suporte um deles

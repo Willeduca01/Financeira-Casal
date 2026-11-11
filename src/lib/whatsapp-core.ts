@@ -124,21 +124,68 @@ export async function processFinancialMessage(
       ? allUsers[senderIndex]
       : allUsers[0];
 
+  // Mapeamento de nomes dos cônjuges para contexto dos cartões
+  const userMap = new Map(allUsers.map((u) => [u.id, u.name.split(" ")[0]]));
+
   // 2. Interpretação com Google Gemini
   const parsed = await interpretFinancialMessage(userText, {
     creditCards: creditCards.map((c) => ({
       id: c.id,
       name: c.name,
       bank: c.bank,
+      totalLimit: Number(c.totalLimit),
+      availableLimit: Number(c.availableLimit),
+      ownerName: c.userId ? userMap.get(c.userId) : undefined,
     })),
     benefitCards: benefitCards.map((b) => ({
       id: b.id,
       name: b.name,
       type: b.type,
+      currentBalance: Number(b.currentBalance),
+      ownerName: b.userId ? userMap.get(b.userId) : undefined,
     })),
   });
 
-  // 3. Gravação no banco Prisma
+  // 3. Consulta de Saldos e Limites ('check_balance')
+  if (parsed.intent === "check_balance") {
+    let reply = parsed.replyMessage;
+
+    // Fallback defensivo com dados exatos do Neon caso a IA não tenha formatado
+    if (!reply || reply.trim().length === 0) {
+      if (parsed.matchedCardId) {
+        const benefit = benefitCards.find((b) => b.id === parsed.matchedCardId);
+        if (benefit) {
+          const bal = Number(benefit.currentBalance).toFixed(2).replace(".", ",");
+          reply = `O saldo atual do seu cartão *${benefit.name} (${benefit.type})* é de *R$ ${bal}* 🥗`;
+        } else {
+          const credit = creditCards.find((c) => c.id === parsed.matchedCardId);
+          if (credit) {
+            const avail = Number(credit.availableLimit).toFixed(2).replace(".", ",");
+            const tot = Number(credit.totalLimit).toFixed(2).replace(".", ",");
+            reply = `Seu cartão *${credit.name}* está com *R$ ${avail}* de limite disponível (Limite total: R$ ${tot}) 💳`;
+          }
+        }
+      }
+
+      if (!reply) {
+        const benLines = benefitCards.map(
+          (b) => `• *${b.name} (${b.type})*: R$ ${Number(b.currentBalance).toFixed(2).replace(".", ",")}`
+        );
+        const credLines = creditCards.map(
+          (c) => `• *${c.name}*: R$ ${Number(c.availableLimit).toFixed(2).replace(".", ",")} disponíveis`
+        );
+        reply = `Aqui estão os saldos e limites atuais dos seus cartões 💳\n\n🥗 *Benefícios (VR/VA):*\n${benLines.join("\n")}\n\n💳 *Cartões de Crédito:*\n${credLines.join("\n")}`;
+      }
+    }
+
+    return {
+      parsed,
+      success: true,
+      replyMessage: reply,
+    };
+  }
+
+  // 4. Gravação no banco Prisma
   if (parsed.intent === "register_expense" && parsed.amount > 0) {
     if (parsed.paymentTarget === "credit_card") {
       const matchedCard =
