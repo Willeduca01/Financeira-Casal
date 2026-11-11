@@ -326,3 +326,79 @@ export async function processFinancialMessage(
   };
 }
 
+/**
+ * Recupera o histórico recente comprimido da conversa do usuário pelo número de WhatsApp direto do Neon Postgres.
+ * Garante que o robô nunca esqueça o contexto mesmo após reinicializações ou hibernação do container.
+ */
+export async function getContactHistory(
+  phoneNumber: string
+): Promise<ChatMessage[]> {
+  try {
+    const clean = sanitizePhoneNumber(phoneNumber);
+    const record = await prisma.whatsAppSession.findUnique({
+      where: { id: `chat_hist_${clean}` },
+    });
+    if (!record?.data) return [];
+    const parsed = JSON.parse(record.data);
+    if (!Array.isArray(parsed)) return [];
+
+    const now = Date.now();
+    const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+
+    // Filtra mensagens das últimas 24h e limita às últimas 8 mensagens mais recentes
+    return parsed
+      .filter(
+        (m: any) => !m.timestamp || now - m.timestamp < TWENTY_FOUR_HOURS_MS
+      )
+      .slice(-8)
+      .map((m: any) => ({
+        role: m.role === "assistant" ? "assistant" : "user",
+        text: String(m.text || "").slice(0, 200),
+      }));
+  } catch (err) {
+    console.warn("[HISTORY] Falha ao recuperar histórico do contato:", err);
+    return [];
+  }
+}
+
+/**
+ * Salva o histórico da conversa comprimido no Neon Postgres indexado pelo número de telefone.
+ * Mantém no máximo 8 mensagens compactadas (ocupando menos de 1 KB).
+ */
+export async function saveContactHistory(
+  phoneNumber: string,
+  history: ChatMessage[]
+): Promise<void> {
+  try {
+    const clean = sanitizePhoneNumber(phoneNumber);
+    const now = Date.now();
+    const compactList = history.slice(-8).map((m) => ({
+      role: m.role,
+      text: m.text.slice(0, 200),
+      timestamp: now,
+    }));
+
+    await prisma.whatsAppSession.upsert({
+      where: { id: `chat_hist_${clean}` },
+      update: { data: JSON.stringify(compactList) },
+      create: { id: `chat_hist_${clean}`, data: JSON.stringify(compactList) },
+    });
+  } catch (err) {
+    console.warn("[HISTORY] Falha ao salvar histórico do contato no Neon:", err);
+  }
+}
+
+/**
+ * Limpa o histórico de pendências quando o gasto é finalizado
+ */
+export async function clearContactHistory(phoneNumber: string): Promise<void> {
+  try {
+    const clean = sanitizePhoneNumber(phoneNumber);
+    await prisma.whatsAppSession
+      .delete({
+        where: { id: `chat_hist_${clean}` },
+      })
+      .catch(() => null);
+  } catch {}
+}
+

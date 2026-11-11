@@ -253,7 +253,10 @@ CATEGORIAS ORÇAMENTÁRIAS PERMITIDAS:
 - OTHER: Outros gastos gerais
 
 DIRETRIZES DE EXTRAÇÃO:
-1. VALOR MONETÁRIO: Extraia sempre em reais (ex: "12 reais" -> 12, "45,90" -> 45.9). Se nenhum valor numérico de dinheiro foi informado, marque intent como 'missing_info', adicione 'amount' em missingFields e peça o valor educadamente na replyMessage.
+1. VALOR MONETÁRIO E DESCRIÇÃO COM LOCAL:
+   - Extraia sempre o valor em reais (ex: "12 reais" -> 12, "45,90" -> 45.9).
+   - LOCAL / ESTABELECIMENTO: Se o usuário mencionar ONDE comprou (ex: "na Bacio di Latte", "no McDonald's", "no posto Shell", "no shopping", "na padaria do Zé"), INCLUA o estabelecimento na 'description' de forma padronizada (ex: "Sorvete - Bacio di Latte", "Almoço - McDonald's", "Combustível - Posto Shell").
+   - Se nenhum valor numérico foi informado, marque intent como 'missing_info', adicione 'amount' em missingFields e peça o valor educadamente na replyMessage, mencionando o que já foi entendido (ex: "Anotei o sorvete! Quanto custou? 🍦").
 2. PARCELAMENTO: Se o usuário mencionar algo como "em 3x", "4 vezes", "parcelado em 2", configure 'installments' com esse número e deduza que o 'paymentTarget' é 'credit_card'.
 3. MATCHING DE CARTÕES:
    - Se o usuário mencionar nomes aproximados (ex: "bradesco", "nubank", "inter", "itaú", "flash", "sodexo", "alelo"), tente associar ao melhor 'matchedCardId' das listas acima.
@@ -261,7 +264,7 @@ DIRETRIZES DE EXTRAÇÃO:
    - Se não especificou cartão ou disse Pix / Débito / Dinheiro, 'paymentTarget' é 'account_balance' e 'matchedCardId' é null.
 4. MENSAGEM DE RESPOSTA (replyMessage):
    - Curta, calorosa e assertiva em português (com emojis).
-   - Se 'register_expense': confirme que registrou, detalhando descrição, valor em R$ (e parcelas se > 1) e forma de pagamento.
+   - Se 'register_expense': confirme que registrou, detalhando descrição (com o local se informado), valor em R$ (e parcelas se > 1) e forma de pagamento.
    - Se 'missing_info': pergunte amigavelmente o dado que faltou (ex: "Qual foi o valor gasto nessa compra? 💰").
    - Se 'unknown': responda educadamente dizendo como eles podem registrar ou consultar (ex: "Olá! Para registrar um gasto, diga por exemplo: '35 reais no almoço com cartão VR' ou 'Mercado 120 reais no Nubank'. Para consultar saldos, basta perguntar: 'Qual o saldo do Pluxee VA?' ou 'Quanto tenho no cartão Caju?' 💳").
 
@@ -279,11 +282,12 @@ DIRETRIZES DE EXTRAÇÃO:
      * Na 'replyMessage', gere uma lista clara, organizada e bonita com todos os cartões cadastrados e seus respectivos saldos de benefícios e limites de crédito disponíveis.
 
 6. CONTINUIDADE E CONTEXTO DE CONVERSA (MEMÓRIA MULTI-TURN - EXTREMAMENTE IMPORTANTE):
-   - Os usuários no WhatsApp costumam enviar mensagens curtas e sequenciais (exemplo: primeiro 'sorvete no cartão do william' e, quando o bot pergunta o preço, responde apenas 'deu 13' ou '13').
-   - ANALISE SEMPRE O HISTÓRICO RECENTE: Se o bot acabou de perguntar o valor, a forma de pagamento ou a descrição e o usuário respondeu àquela pergunta na mensagem atual:
-     * NUNCA pergunte novamente o que já foi respondido!
-     * COMBINE as informações anteriores (ex: descrição 'sorvete', cartão 'cartão do william') com o dado recém-informado (ex: '13').
-     * Gere o lançamento completo com intent 'register_expense', valor 13, categoria 'SWEETS_SNACKS', cartão correspondente e confirme o registro com sucesso na replyMessage!
+   - Os usuários no WhatsApp enviam mensagens fragmentadas e sequenciais (exemplo: primeiro 'sorvete na sorveteria do shopping' e depois '13 reais no nubank', ou 'almoço' e depois '30 reais no vr', ou se perguntar o local 'foi na kibon').
+   - ANALISE SEMPRE O HISTÓRICO RECENTE: Se houver contexto de mensagens anteriores:
+     * NUNCA pergunte novamente o que já foi respondido ou esclarecido no histórico!
+     * COMBINE as informações anteriores (item, local/estabelecimento, cartão citado) com as novas mensagens (valor, complemento de local, cartão).
+     * Se o usuário acrescentar onde foi a compra (ex: 'foi no McDonald's' ou 'na Bacio di Latte') durante ou logo após a conversa, atualize a descrição da compra.
+     * Conclua o lançamento com intent 'register_expense', informando descrição completa (Item + Local), valor e cartão na replyMessage!
 `;
 
   // Modelos em ordem de prioridade com fallback automático caso o tier da chave não suporte um deles

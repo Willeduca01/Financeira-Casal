@@ -23,6 +23,9 @@ import { Boom } from "@hapi/boom";
 import {
   processFinancialMessage,
   isNumberAuthorized,
+  getContactHistory,
+  saveContactHistory,
+  clearContactHistory,
 } from "../lib/whatsapp-core";
 import { prisma } from "../lib/prisma";
 import {
@@ -37,15 +40,6 @@ const PORT = Number(process.env.PORT) || 8080;
 // Estado global do bot para a interface Web
 let currentQrCode: string | null = null;
 let isConnected = false;
-
-// Memória de histórico recente da conversa para suportar diálogo contínuo (multi-turn)
-interface HistoryItem {
-  role: "user" | "assistant";
-  text: string;
-  timestamp: number;
-}
-const conversationHistory = new Map<string, HistoryItem[]>();
-const CONVERSATION_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutos
 
 /**
  * Servidor Web leve para o Render/Koyeb:
@@ -465,17 +459,14 @@ async function startBaileysBot() {
         `\n📩 [NOVA MENSAGEM] Remetente: ${senderNumber} | Texto: "${cleanText}"`
       );
 
-      // 1. Recupera histórico recente de diálogo para contexto contínuo
-      const now = Date.now();
-      const userHistory = (conversationHistory.get(senderNumber) || [])
-        .filter((item) => now - item.timestamp < CONVERSATION_TIMEOUT_MS)
-        .slice(-6);
+      // 1. Recupera histórico recente persistido no Neon Postgres (garante memória 24h sem perder após restart do container)
+      const userHistory = await getContactHistory(senderNumber);
 
       try {
         const result = await processFinancialMessage(
           senderNumber,
           cleanText,
-          userHistory.map((h) => ({ role: h.role, text: h.text }))
+          userHistory
         );
 
         console.log(
@@ -488,24 +479,14 @@ async function startBaileysBot() {
 
         console.log(`✅ [ENVIADO COM SUCESSO] para ${senderNumber}!`);
 
-        // 2. Atualiza o histórico: se registrou com sucesso, limpa a pendência; caso contrário, salva o fio da conversa
-        if (
-          result.parsed.intent === "register_expense" ||
-          result.parsed.intent === "register_income"
-        ) {
-          conversationHistory.delete(senderNumber);
-        } else {
-          const updated = [
-            ...userHistory,
-            { role: "user" as const, text: cleanText, timestamp: now },
-            {
-              role: "assistant" as const,
-              text: result.replyMessage,
-              timestamp: Date.now(),
-            },
-          ].slice(-6);
-          conversationHistory.set(senderNumber, updated);
-        }
+        // 2. Persiste histórico atualizado no Neon (compactado, máx 8 mensagens, < 1 KB)
+        const updated = [
+          ...userHistory,
+          { role: "user" as const, text: cleanText },
+          { role: "assistant" as const, text: result.replyMessage },
+        ].slice(-8);
+
+        await saveContactHistory(senderNumber, updated);
       } catch (error) {
         console.error("❌ [ERRO AO PROCESSAR MENSAGEM]", error);
 
