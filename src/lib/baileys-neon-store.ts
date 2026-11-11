@@ -48,20 +48,31 @@ export async function backupSessionToNeon(authFolder: string): Promise<void> {
     const files = await fs.readdir(authFolder);
     if (files.length === 0) return;
 
+    let savedCount = 0;
     for (const file of files) {
-      const filePath = path.join(authFolder, file);
-      const stat = await fs.stat(filePath);
-      if (stat.isFile()) {
-        const content = await fs.readFile(filePath, "utf-8");
-        await prisma.whatsAppSession.upsert({
-          where: { id: file },
-          update: { data: content },
-          create: { id: file, data: content },
-        });
+      try {
+        const filePath = path.join(authFolder, file);
+        const stat = await fs.stat(filePath).catch(() => null);
+        if (stat && stat.isFile()) {
+          const content = await fs.readFile(filePath, "utf-8");
+          await prisma.whatsAppSession.upsert({
+            where: { id: file },
+            update: { data: content },
+            create: { id: file, data: content },
+          });
+          savedCount++;
+        }
+      } catch (err: any) {
+        // Ignora arquivos temporários (como pre-key-*.json) que o Baileys rotaciona e deleta concorrentemente
+        if (err?.code !== "ENOENT") {
+          console.warn(`⚠️ [NEON_SESSION] Erro ao sincronizar ${file}:`, err);
+        }
       }
     }
 
-    console.log(`💾 [NEON_SESSION] ${files.length} arquivos de sessão sincronizados no Neon.`);
+    if (savedCount > 0) {
+      console.log(`💾 [NEON_SESSION] ${savedCount} arquivos de sessão sincronizados no Neon.`);
+    }
   } catch (error) {
     console.error("❌ [NEON_SESSION] Erro ao sincronizar sessão para o Neon:", error);
   }
