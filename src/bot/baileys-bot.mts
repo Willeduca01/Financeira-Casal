@@ -22,6 +22,7 @@ import {
   processFinancialMessage,
   isNumberAuthorized,
 } from "../lib/whatsapp-core";
+import { prisma } from "../lib/prisma";
 import {
   restoreSessionFromNeon,
   backupSessionToNeon,
@@ -212,6 +213,30 @@ async function startBaileysBot() {
       currentQrCode = qr;
       isConnected = false;
 
+      // Salva status e QR Code no banco Neon para o site exibir em tempo real
+      try {
+        await prisma.whatsAppSession.upsert({
+          where: { id: "qr_status" },
+          update: {
+            data: JSON.stringify({
+              qr,
+              connected: false,
+              updatedAt: new Date().toISOString(),
+            }),
+          },
+          create: {
+            id: "qr_status",
+            data: JSON.stringify({
+              qr,
+              connected: false,
+              updatedAt: new Date().toISOString(),
+            }),
+          },
+        });
+      } catch (err) {
+        console.warn("Falha ao salvar qr_status no Neon:", err);
+      }
+
       console.log("\n======================================================");
       console.log("📱 QR CODE DISPONÍVEL:");
       console.log(`🌐 Acesse pelo navegador em: http://localhost:${PORT}/qr`);
@@ -224,6 +249,27 @@ async function startBaileysBot() {
       isConnected = false;
       const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
       const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+
+      try {
+        await prisma.whatsAppSession.upsert({
+          where: { id: "qr_status" },
+          update: {
+            data: JSON.stringify({
+              qr: null,
+              connected: false,
+              updatedAt: new Date().toISOString(),
+            }),
+          },
+          create: {
+            id: "qr_status",
+            data: JSON.stringify({
+              qr: null,
+              connected: false,
+              updatedAt: new Date().toISOString(),
+            }),
+          },
+        });
+      } catch {}
 
       console.log(
         `⚠️ Conexão encerrada (Status: ${statusCode}). Reconectando: ${shouldReconnect}...`
@@ -244,6 +290,27 @@ async function startBaileysBot() {
 
       // Garante que o estado final conectado está salvo no Neon
       await backupSessionToNeon(AUTH_FOLDER);
+
+      try {
+        await prisma.whatsAppSession.upsert({
+          where: { id: "qr_status" },
+          update: {
+            data: JSON.stringify({
+              qr: null,
+              connected: true,
+              updatedAt: new Date().toISOString(),
+            }),
+          },
+          create: {
+            id: "qr_status",
+            data: JSON.stringify({
+              qr: null,
+              connected: true,
+              updatedAt: new Date().toISOString(),
+            }),
+          },
+        });
+      } catch {}
 
       console.log("\n======================================================");
       console.log("✅ [WHATSAPP CONECTADO COM SUCESSO!]");

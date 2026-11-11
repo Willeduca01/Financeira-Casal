@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { useFinance } from "@/context/FinanceContext";
 import { User, CoupleSettings } from "@/types";
 import { formatBRL } from "@/lib/utils";
+import { WhatsAppQRCard } from "./WhatsAppQRCard";
 import {
   User as UserIcon,
   Heart,
@@ -544,7 +545,10 @@ export const SettingsView: React.FC = () => {
         </form>
       </div>
 
-      {/* 4. GERENCIAMENTO DE DADOS & LIMPEZA DE TESTES */}
+      {/* 4. INTEGRAÇÃO WHATSAPP DO CASAL (QR CODE E STATUS) */}
+      <WhatsAppQRCard />
+
+      {/* 5. GERENCIAMENTO DE DADOS & LIMPEZA DE TESTES */}
       <div className="bg-[#FBF9F5] border border-[#C46D53]/30 rounded-[32px] p-5 sm:p-6 shadow-sm space-y-4">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-[#C46D53]/15 text-[#C46D53] flex items-center justify-center">
