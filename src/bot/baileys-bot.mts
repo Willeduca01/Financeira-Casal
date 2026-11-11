@@ -1,5 +1,7 @@
 import process from "node:process";
 import http from "node:http";
+import fs from "node:fs/promises";
+import path from "node:path";
 
 // Carrega variáveis do arquivo .env automaticamente no Node 20+
 try {
@@ -363,12 +365,60 @@ async function startBaileysBot() {
         continue;
       }
 
-      const senderNumber = remoteJid.replace(/@.*$/, "");
+      let senderNumber = remoteJid.replace(/@.*$/, "");
       const allowedEnv = process.env.WHATSAPP_ALLOWED_NUMBERS;
+
+      // Resolução inteligente de LID (WhatsApp Business/Privacy ID -> número de telefone real)
+      if (remoteJid.endsWith("@lid") || msg.key.participant) {
+        if (msg.key.participant) {
+          const partNum = msg.key.participant.replace(/@.*$/, "");
+          if (isNumberAuthorized(partNum, allowedEnv)) {
+            senderNumber = partNum;
+          }
+        }
+
+        if (remoteJid.endsWith("@lid")) {
+          try {
+            const rawLid = remoteJid.replace(/@.*$/, "");
+            const lidReverseFile = path.join(
+              AUTH_FOLDER,
+              `lid-mapping-${rawLid}_reverse.json`
+            );
+            const fileExists = await fs
+              .access(lidReverseFile)
+              .then(() => true)
+              .catch(() => false);
+
+            if (fileExists) {
+              const raw = await fs.readFile(lidReverseFile, "utf-8");
+              const resolved = JSON.parse(raw);
+              if (resolved && typeof resolved === "string") {
+                console.log(`🔍 [LID_RESOLVIDO] ${rawLid}@lid -> ${resolved}`);
+                senderNumber = resolved;
+              }
+            } else {
+              const dbSession = await prisma.whatsAppSession.findUnique({
+                where: { id: `lid-mapping-${rawLid}_reverse.json` },
+              });
+              if (dbSession) {
+                const resolved = JSON.parse(dbSession.data);
+                if (resolved && typeof resolved === "string") {
+                  console.log(
+                    `🔍 [LID_RESOLVIDO_NEON] ${rawLid}@lid -> ${resolved}`
+                  );
+                  senderNumber = resolved;
+                }
+              }
+            }
+          } catch (err) {
+            console.warn("Falha ao resolver LID:", err);
+          }
+        }
+      }
 
       if (!isNumberAuthorized(senderNumber, allowedEnv)) {
         console.warn(
-          `[WHATSAPP_BLOQUEIO] Mensagem de número não autorizado: ${senderNumber}. Ignorando.`
+          `[WHATSAPP_BLOQUEIO] Mensagem de número não autorizado: ${senderNumber} (JID: ${remoteJid}). Ignorando.`
         );
         continue;
       }
