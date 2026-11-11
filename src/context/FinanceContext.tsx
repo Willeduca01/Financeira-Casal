@@ -536,15 +536,23 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
       console.warn("Erro ao ler do LocalStorage:", e);
     }
 
-    // 3. Re-sincronizar apenas quando o usuário retornar ao app autenticado
-    const handleWindowFocus = () => {
-      if (status === "authenticated") {
-        refreshFromBackend();
+    // 3. Re-sincronização contínua e em tempo real (Multi-dispositivos e WhatsApp)
+    const handleSync = () => {
+      if (document.visibilityState === "visible") {
+        void refreshFromBackend();
       }
     };
-    window.addEventListener("focus", handleWindowFocus);
+
+    window.addEventListener("focus", handleSync);
+    document.addEventListener("visibilitychange", handleSync);
+
+    // Auto-polling a cada 8 segundos quando o app estiver visível na tela
+    const syncInterval = setInterval(handleSync, 8000);
+
     return () => {
-      window.removeEventListener("focus", handleWindowFocus);
+      window.removeEventListener("focus", handleSync);
+      document.removeEventListener("visibilitychange", handleSync);
+      clearInterval(syncInterval);
     };
   }, [status, refreshFromBackend]);
 
