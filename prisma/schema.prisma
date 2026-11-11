@@ -342,3 +342,10 @@ model BenefitCard {
   @@index([userId])
 }
 
+model WhatsAppSession {
+  id        String   @id
+  data      String   @db.Text
+  updatedAt DateTime @updatedAt
+}
+
+

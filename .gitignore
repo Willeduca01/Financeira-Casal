@@ -37,6 +37,10 @@ yarn-error.log*
 # vercel
 .vercel
 
+# baileys whatsapp session
+baileys_auth
+baileys_auth*
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
