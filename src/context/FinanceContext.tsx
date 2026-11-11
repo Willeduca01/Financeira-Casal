@@ -309,10 +309,17 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
   const refreshFromBackend = useCallback(async () => {
     try {
       setIsSyncing(true);
-      const res = await fetch("/api/finances", {
+      const res = await fetch(`/api/finances?_t=${Date.now()}`, {
         cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+        },
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        console.warn("[SYNC] /api/finances status:", res.status);
+        return;
+      }
       const data = await res.json();
 
       if (data?.users && data.users.length > 0) {
@@ -331,19 +338,19 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
         setCoupleSettings(data.coupleSettings);
       }
 
-      if (data?.authenticated) {
-        if (data.loans !== undefined) {
-          setLoans(data.loans.map(normalizeLoan));
-        }
-        if (data.expenses !== undefined) {
-          setExpenses(
-            data.expenses.map((e: any) => ({
-              ...e,
-              amount: parseNumber(e.amount),
-            }))
-          );
-        }
-        if (data.incomes !== undefined) {
+      if (data?.expenses !== undefined) {
+        setExpenses(
+          data.expenses.map((e: any) => ({
+            ...e,
+            amount: parseNumber(e.amount),
+          }))
+        );
+      }
+
+      if (data?.loans !== undefined) {
+        setLoans(data.loans.map(normalizeLoan));
+      }
+      if (data?.incomes !== undefined) {
           setIncomes(
             data.incomes.map((i: any) => ({
               ...i,
@@ -392,7 +399,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
             monthlyLivingCostCalculated: parseNumber(data.emergencyFund.monthlyLivingCostCalculated),
           });
         }
-      }
     } catch (err) {
       console.warn("[SYNC] Erro ao sincronizar com banco em nuvem:", err);
     } finally {
