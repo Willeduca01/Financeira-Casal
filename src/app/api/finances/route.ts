@@ -947,8 +947,8 @@ export async function PUT(request: NextRequest) {
       }
 
       case "user": {
-        // IDOR PREVENTED: Usuário só pode editar o próprio perfil (sessionUserId)
-        const targetId = sessionUserId;
+        // Permite atualizar o integrante especificado pelo ID (action.id) ou o da sessão ativa (sessionUserId)
+        const targetId = action.id || sessionUserId;
         const existingUser = await prisma.user.findUnique({ where: { id: targetId } });
         if (!existingUser) {
           return NextResponse.json(

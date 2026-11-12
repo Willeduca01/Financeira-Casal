@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { useFinance } from "@/context/FinanceContext";
 import { User, CoupleSettings } from "@/types";
 import { formatBRL } from "@/lib/utils";
+import { compressAvatarToWebP } from "@/lib/image-compress";
 import { WhatsAppQRCard } from "./WhatsAppQRCard";
 import {
   User as UserIcon,
@@ -55,6 +56,7 @@ const UserEditCard: React.FC<UserEditFormProps> = ({ user, onSave, partnerName, 
   const [vaAmount, setVaAmount] = useState(user.vaAmount.toString());
   const [showAvatarPresets, setShowAvatarPresets] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isCompressingImage, setIsCompressingImage] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -68,27 +70,33 @@ const UserEditCard: React.FC<UserEditFormProps> = ({ user, onSave, partnerName, 
     setVaAmount(user.vaAmount.toString());
   }, [user]);
 
-  // Manipular upload local de imagem (converte para Base64 comprimida)
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Manipular upload local de imagem (comprime no cliente diretamente para WebP ultra-leve ~20KB)
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      alert("Por favor selecione um arquivo de imagem válido (JPG, PNG, WebP).");
+      alert("Por favor selecione um arquivo de imagem válido (JPG, PNG ou WebP).");
       return;
     }
 
-    if (file.size > 3 * 1024 * 1024) {
-      alert("A imagem selecionada é muito grande. Escolha uma foto de até 3MB.");
+    if (file.size > 25 * 1024 * 1024) {
+      alert("A imagem selecionada é muito pesada (máx 25MB). Escolha outra foto.");
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const base64 = event.target?.result as string;
-      setAvatar(base64);
-    };
-    reader.readAsDataURL(file);
+    setIsCompressingImage(true);
+    try {
+      // Converte para WebP 280x280 com proporção centralizada
+      const compressedWebP = await compressAvatarToWebP(file, 280, 0.82);
+      setAvatar(compressedWebP);
+    } catch (err) {
+      console.error("[AVATAR_COMPRESSION_ERROR]", err);
+      alert("Não foi possível otimizar esta imagem. Tente outro arquivo.");
+    } finally {
+      setIsCompressingImage(false);
+      if (e.target) e.target.value = "";
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -160,12 +168,20 @@ const UserEditCard: React.FC<UserEditFormProps> = ({ user, onSave, partnerName, 
             <img
               src={avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150"}
               alt={name}
-              className="w-20 h-20 rounded-full object-cover ring-4 ring-[#FBF9F5] shadow-md border border-[#E6DEC8]"
+              className={`w-20 h-20 rounded-full object-cover ring-4 ring-[#FBF9F5] shadow-md border border-[#E6DEC8] transition-opacity ${
+                isCompressingImage ? "opacity-40" : "opacity-100"
+              }`}
             />
+            {isCompressingImage && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-6 h-6 border-2 border-[#C46D53] border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
             <button
               type="button"
+              disabled={isCompressingImage}
               onClick={() => fileInputRef.current?.click()}
-              className="absolute bottom-0 right-0 p-1.5 bg-[#C46D53] text-[#FBF9F5] rounded-full shadow hover:bg-[#B05B42] transition-colors"
+              className="absolute bottom-0 right-0 p-1.5 bg-[#C46D53] text-[#FBF9F5] rounded-full shadow hover:bg-[#B05B42] transition-colors disabled:opacity-50"
               title="Carregar foto do computador/celular"
             >
               <Camera size={14} />
@@ -183,11 +199,21 @@ const UserEditCard: React.FC<UserEditFormProps> = ({ user, onSave, partnerName, 
               />
               <button
                 type="button"
+                disabled={isCompressingImage}
                 onClick={() => fileInputRef.current?.click()}
-                className="px-3 py-1.5 rounded-xl bg-[#C46D53] hover:bg-[#B05B42] text-[#FBF9F5] text-xs font-bold shadow-sm flex items-center gap-1.5 transition-colors"
+                className="px-3 py-1.5 rounded-xl bg-[#C46D53] hover:bg-[#B05B42] text-[#FBF9F5] text-xs font-bold shadow-sm flex items-center gap-1.5 transition-colors disabled:opacity-50"
               >
-                <Upload size={13} />
-                <span>Escolher Foto</span>
+                {isCompressingImage ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Otimizando...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload size={13} />
+                    <span>Escolher Foto</span>
+                  </>
+                )}
               </button>
 
               <button
@@ -201,7 +227,7 @@ const UserEditCard: React.FC<UserEditFormProps> = ({ user, onSave, partnerName, 
             </div>
 
             <p className="text-[11px] text-[#786B5E]">
-              Formatos recomendados: JPG, PNG ou WebP.
+              Formatos aceitos: JPG, PNG ou WebP (compressão automática para WebP ultra-leve).
             </p>
           </div>
         </div>

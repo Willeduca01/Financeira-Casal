@@ -318,7 +318,12 @@ export const PayLoanInstallmentSchema = z.object({
 export const UpdateUserSchema = z.object({
   name: sanitizedString(1, 80, "Nome do integrante").optional(),
   email: z.string().email("E-mail inválido").optional(),
-  avatar: z.string().max(2000000, "Foto excede o tamanho máximo").optional().nullable(),
+  avatar: z
+    .string()
+    .max(2000000, "Foto excede o tamanho máximo")
+    .transform((val) => (val && val.trim() !== "" ? val.trim() : null))
+    .optional()
+    .nullable(),
   salaryGross: nonNegativeMonetary("Salário bruto").optional(),
   salaryNet: nonNegativeMonetary("Salário líquido").optional(),
   vrAmount: nonNegativeMonetary("Valor do VR").optional(),
