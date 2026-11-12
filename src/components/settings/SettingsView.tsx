@@ -19,6 +19,7 @@ import {
   Save,
   Trash2,
   Image as ImageIcon,
+  Link as LinkIcon,
   KeyRound,
   Percent,
   Wallet,
@@ -55,6 +56,8 @@ const UserEditCard: React.FC<UserEditFormProps> = ({ user, onSave, partnerName, 
   const [vrAmount, setVrAmount] = useState(user.vrAmount.toString());
   const [vaAmount, setVaAmount] = useState(user.vaAmount.toString());
   const [showAvatarPresets, setShowAvatarPresets] = useState(false);
+  const [showUrlInput, setShowUrlInput] = useState(false);
+  const [imageUrlInput, setImageUrlInput] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isCompressingImage, setIsCompressingImage] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -70,7 +73,7 @@ const UserEditCard: React.FC<UserEditFormProps> = ({ user, onSave, partnerName, 
     setVaAmount(user.vaAmount.toString());
   }, [user]);
 
-  // Manipular upload local de imagem (comprime no cliente diretamente para WebP ultra-leve ~20KB)
+  // Manipular upload local de imagem (comprime no cliente diretamente para WebP ultra-leve ~20KB e salva na nuvem)
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -90,6 +93,10 @@ const UserEditCard: React.FC<UserEditFormProps> = ({ user, onSave, partnerName, 
       // Converte para WebP 280x280 com proporção centralizada
       const compressedWebP = await compressAvatarToWebP(file, 280, 0.82);
       setAvatar(compressedWebP);
+      // Auto-salva imediatamente na nuvem para que a foto fique salva mesmo sem submeter o restante do formulário
+      await onSave({ avatar: compressedWebP });
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err) {
       console.error("[AVATAR_COMPRESSION_ERROR]", err);
       alert("Não foi possível otimizar esta imagem. Tente outro arquivo.");
@@ -97,6 +104,18 @@ const UserEditCard: React.FC<UserEditFormProps> = ({ user, onSave, partnerName, 
       setIsCompressingImage(false);
       if (e.target) e.target.value = "";
     }
+  };
+
+  const handleApplyUrl = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = imageUrlInput.trim();
+    if (!trimmed) return;
+    setAvatar(trimmed);
+    setShowUrlInput(false);
+    await onSave({ avatar: trimmed });
+    setImageUrlInput("");
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 3000);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -218,7 +237,22 @@ const UserEditCard: React.FC<UserEditFormProps> = ({ user, onSave, partnerName, 
 
               <button
                 type="button"
-                onClick={() => setShowAvatarPresets(!showAvatarPresets)}
+                onClick={() => {
+                  setShowUrlInput(!showUrlInput);
+                  setShowAvatarPresets(false);
+                }}
+                className="px-3 py-1.5 rounded-xl bg-[#FBF9F5] hover:bg-[#E6DEC8] text-[#786B5E] border border-[#E6DEC8] text-xs font-semibold flex items-center gap-1.5 transition-colors"
+              >
+                <LinkIcon size={13} />
+                <span>Colar Link</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAvatarPresets(!showAvatarPresets);
+                  setShowUrlInput(false);
+                }}
                 className="px-3 py-1.5 rounded-xl bg-[#FBF9F5] hover:bg-[#E6DEC8] text-[#786B5E] border border-[#E6DEC8] text-xs font-semibold flex items-center gap-1.5 transition-colors"
               >
                 <ImageIcon size={13} />
@@ -232,20 +266,49 @@ const UserEditCard: React.FC<UserEditFormProps> = ({ user, onSave, partnerName, 
           </div>
         </div>
 
+        {/* Input para Colar URL de Foto da Internet */}
+        {showUrlInput && (
+          <div className="p-3 bg-[#F4EFE6] rounded-2xl border border-[#E6DEC8] space-y-2 animate-in fade-in duration-150">
+            <span className="text-[11px] font-bold text-[#786B5E] block">
+              Cole o link da sua foto (URL na internet):
+            </span>
+            <div className="flex gap-2">
+              <input
+                type="url"
+                value={imageUrlInput}
+                onChange={(e) => setImageUrlInput(e.target.value)}
+                placeholder="https://exemplo.com/sua-foto.jpg"
+                className="flex-1 px-3 py-2 rounded-xl bg-[#FBF9F5] border border-[#E6DEC8] text-xs text-[#2C221E] focus:outline-none focus:ring-2 focus:ring-[#C46D53]/40"
+              />
+              <button
+                type="button"
+                onClick={handleApplyUrl}
+                disabled={!imageUrlInput.trim()}
+                className="px-3.5 py-2 rounded-xl bg-[#7A8B68] hover:bg-[#657554] text-[#FBF9F5] text-xs font-bold shadow-sm transition-colors disabled:opacity-50"
+              >
+                Salvar Link
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Galeria de Avatares Rápidos */}
         {showAvatarPresets && (
           <div className="p-3 bg-[#F4EFE6] rounded-2xl border border-[#E6DEC8] space-y-2 animate-in fade-in duration-150">
             <span className="text-[11px] font-bold text-[#786B5E] block">
-              Selecione um avatar estilizado:
+              Selecione um avatar estilizado (salva automaticamente):
             </span>
             <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
               {PRESET_AVATARS.map((url, idx) => (
                 <button
                   key={idx}
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
                     setAvatar(url);
                     setShowAvatarPresets(false);
+                    await onSave({ avatar: url });
+                    setSaveSuccess(true);
+                    setTimeout(() => setSaveSuccess(false), 3000);
                   }}
                   className={`relative rounded-full overflow-hidden p-0.5 border-2 transition-all ${
                     avatar === url

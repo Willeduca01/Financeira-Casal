@@ -79,3 +79,4 @@ export async function compressAvatarToWebP(
     img.src = objectUrl;
   });
 }
+

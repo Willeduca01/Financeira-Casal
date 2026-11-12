@@ -14,6 +14,7 @@ import {
   Menu,
   Lock,
   KeyRound,
+  Camera,
   LogOut,
   Settings,
 } from "lucide-react";
@@ -22,6 +23,11 @@ import { TabType } from "@/components/BottomNav";
 
 const ChangePinModal = dynamic(
   () => import("@/components/modals/ChangePinModal").then((m) => m.ChangePinModal),
+  { ssr: false }
+);
+
+const ChangeAvatarModal = dynamic(
+  () => import("@/components/modals/ChangeAvatarModal").then((m) => m.ChangeAvatarModal),
   { ssr: false }
 );
 
@@ -64,6 +70,8 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMobileMenu, onNavigateTab 
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showConfirmReset, setShowConfirmReset] = useState(false);
   const [isChangePinModalOpen, setIsChangePinModalOpen] = useState(false);
+  const [isChangeAvatarModalOpen, setIsChangeAvatarModalOpen] = useState(false);
+  const [avatarModalTargetUser, setAvatarModalTargetUser] = useState<string | undefined>(undefined);
 
   const handlePrevMonth = () => {
     if (selectedMonth === 0) {
@@ -262,6 +270,18 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMobileMenu, onNavigateTab 
                     <button
                       onClick={() => {
                         setShowUserDropdown(false);
+                        setAvatarModalTargetUser(currentUser.id);
+                        setIsChangeAvatarModalOpen(true);
+                      }}
+                      className="w-full flex items-center gap-2 p-2 rounded-xl text-xs text-[#2C221E] hover:bg-[#F4EFE6] transition-colors font-medium text-left"
+                    >
+                      <Camera size={14} className="text-[#C46D53]" />
+                      <span>Alterar Foto de Perfil</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setShowUserDropdown(false);
                         setIsChangePinModalOpen(true);
                       }}
                       className="w-full flex items-center gap-2 p-2 rounded-xl text-xs text-[#2C221E] hover:bg-[#F4EFE6] transition-colors font-medium text-left"
@@ -367,6 +387,13 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMobileMenu, onNavigateTab 
       <ChangePinModal
         isOpen={isChangePinModalOpen}
         onClose={() => setIsChangePinModalOpen(false)}
+      />
+
+      {/* Modal de Alteração Rápida de Foto de Perfil */}
+      <ChangeAvatarModal
+        isOpen={isChangeAvatarModalOpen}
+        onClose={() => setIsChangeAvatarModalOpen(false)}
+        targetUserId={avatarModalTargetUser}
       />
     </header>
   );

@@ -2140,6 +2140,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({
           }),
         () => {
           setUsers(prevUsers);
+        },
+        (savedUserData) => {
+          if (savedUserData) {
+            setUsers((prev) =>
+              prev.map((u) => (u.id === userId ? { ...u, ...savedUserData } : u))
+            );
+          }
         }
       );
     },
